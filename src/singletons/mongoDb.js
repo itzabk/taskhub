@@ -28,16 +28,17 @@ let shuttingDown = false;
 
 // Global mongoose settings
 mongoose.set("bufferCommands", false);
+mongoose.set("strictQuery", true);
 
 // Create logger instance
 const logger = new Logger();
 
 // Add mongoose configs
 const mongooseConfigs = {
-  serverSelectionTimeoutMS: 30000,
-  connectTimeoutMS: 15000,
-  socketTimeoutMS: 15000,
-  heartbeatFrequencyMS: 10000,
+  serverSelectionTimeoutMS: 30_000,
+  connectTimeoutMS: 15_000,
+  socketTimeoutMS: 15_000,
+  heartbeatFrequencyMS: 10_000,
   family: 0,
   readPreference: "primaryPreferred",
 };
