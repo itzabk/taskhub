@@ -154,3 +154,5 @@ export async function initDb() {
     throw err;
   }
 }
+
+export const db = await initDb();
