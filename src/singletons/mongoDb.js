@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-import { DB_CONFIGS } from "../configs/env.json";
+import { dbConfigs } from "../configs/dbConfigs";
 
 import Logger from "../helpers/pino";
 
@@ -16,7 +16,7 @@ const {
   DB_PASSWORD = null,
   DB_CERT = null,
   IS_DATABASE_CONNECTION_ENCRYPTED = false,
-} = DB_CONFIGS;
+} = dbConfigs;
 
 const __filename = fileURLToPath(import.meta.url);
 
@@ -35,7 +35,7 @@ const logger = new Logger();
 
 // Add mongoose configs
 const mongooseConfigs = {
-  serverSelectionTimeoutMS: 30_000,
+  serverSelectionTimeoutMS: 20_000,
   connectTimeoutMS: 15_000,
   socketTimeoutMS: 15_000,
   heartbeatFrequencyMS: 10_000,
@@ -63,6 +63,7 @@ if (IS_DATABASE_CONNECTION_ENCRYPTED) {
       meta: { err },
       message: "Unable to write certificate",
     });
+    throw err;
   }
 }
 
@@ -114,10 +115,11 @@ function attachListeners(conn, logger) {
       },
       "Error during db connection",
     );
+    throw err;
   });
 }
 
-async function shutdown() {
+export async function dbShutdown() {
   if (shuttingDown) return;
   shuttingDown = true;
   await mongoose.connection.close();
@@ -125,11 +127,10 @@ async function shutdown() {
     { file: "mainThread", service: "mongoDb", method: "shutdown" },
     "Connection closed",
   );
-  process.exit(0);
 }
 
 // Create global instance of db
-export default async function initDb() {
+export async function initDb() {
   try {
     const conn = mongoose.connection;
     // Only attach if they aren't already there
@@ -150,10 +151,6 @@ export default async function initDb() {
       },
       "Error during db connection",
     );
-    process.exit(1);
+    throw err;
   }
 }
-
-process.on("SIGINT", shutdown);
-
-process.on("SIGTERM", shutdown);

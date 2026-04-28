@@ -16,7 +16,7 @@ export default class Logger {
   }
 
   assert(payload = {}, msg = "") {
-    const requiredKeys = ["file", "service", "method", "duration", "meta"];
+    const requiredKeys = ["file", "service", "method"];
     // Check if required keys exists in payload
     const payloadKeys = Object.keys(payload);
     requiredKeys.forEach((key) => {
