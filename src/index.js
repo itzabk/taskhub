@@ -105,11 +105,22 @@ async function shutdownOrchestrator(code = 0) {
   if (shutdown) {
     return;
   }
+  const start = process.hrtime.bigint();
+  logger.trace(
+    {
+      file: "mainThread",
+      service: "index",
+      method: "shutdownOrchestrator",
+    },
+    `Cleanup started successfully`,
+  );
   shutdown = true;
+
   const forceKill = setTimeout(() => {
     process.exit(1);
   }, 10_000);
   forceKill.unref();
+
   const childProcesses = getChildProcesses();
   const childProcessPromises = [];
   for (const child of childProcesses) {
@@ -123,11 +134,18 @@ async function shutdownOrchestrator(code = 0) {
   });
   await Promise.allSettled(childProcessPromises);
   await dbShutdown();
+
+  const end = process.hrtime.bigint();
+  const durationNS = end - start;
+  // Convert to milliseconds for logging
+  const durationMS = Number(durationNS) / 1_000_000;
+
   logger.info(
     {
       file: "mainThread",
       service: "index",
       method: "shutdownOrchestrator",
+      durationMS,
     },
     `Cleanup completed successfully, process exiting with exit code:${code}`,
   );

@@ -5,7 +5,7 @@ import * as logger from "./pino";
 //     file:"file",
 //     service:"exampleService",
 //     method:"fetchAll",
-//     duration: 120  (in ms / milliseconds)
+//     durationMS: 120  (in ms / milliseconds)
 //     meta:{}
 // }
 
