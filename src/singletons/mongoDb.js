@@ -1,34 +1,34 @@
-import mongoose from "mongoose";
+import fs from 'node:fs';
 
-import { dbConfigs } from "../configs/dbConfigs";
+import path from 'node:path';
 
-import Logger from "../helpers/pino";
+import { fileURLToPath } from 'node:url';
 
-import fs from "fs";
+import mongoose from 'mongoose';
 
-import path from "path";
+import { serverConfigs } from '../configs/serverConfigs';
 
-import { fileURLToPath } from "url";
+import Logger from '../helpers/pino';
+
+const { DB_CONFIGS } = serverConfigs;
 
 const {
-  DB_URL = "",
+  DB_URL = '',
   DB_USERNAME = null,
   DB_PASSWORD = null,
   DB_CERT = null,
   IS_DATABASE_CONNECTION_ENCRYPTED = false,
-} = dbConfigs;
+} = DB_CONFIGS;
 
-const __filename = fileURLToPath(import.meta.url);
+const __dirname = fileURLToPath(import.meta.dirname);
 
-const __dirname = path.dirname(__filename);
+const __certpath = path.resolve(__dirname, '../configs');
 
-const __certpath = path.resolve(__dirname, "../configs");
-
-let shuttingDown = false;
+let isShuttingDown = false;
 
 // Global mongoose settings
-mongoose.set("bufferCommands", false);
-mongoose.set("strictQuery", true);
+mongoose.set('bufferCommands', false);
+mongoose.set('strictQuery', true);
 
 // Create logger instance
 const logger = new Logger();
@@ -40,7 +40,7 @@ const mongooseConfigs = {
   socketTimeoutMS: 15_000,
   heartbeatFrequencyMS: 10_000,
   family: 0,
-  readPreference: "primaryPreferred",
+  readPreference: 'primaryPreferred',
 };
 
 if (DB_USERNAME && DB_PASSWORD) {
@@ -50,106 +50,140 @@ if (DB_USERNAME && DB_PASSWORD) {
 
 if (IS_DATABASE_CONNECTION_ENCRYPTED) {
   try {
-    fs.writeFileSync(path.join(__certpath, "cert.pem"), DB_CERT);
+    fs.writeFileSync(path.join(__certpath, 'cert.pem'), DB_CERT);
     mongooseConfigs.tls = true;
-    mongooseConfigs.authSource = "$external";
-    mongooseConfigs.authMechanism = "MONGODB-X509";
-    mongooseConfigs.tlsCertificateKeyFile = path.join(__certpath, "cert.pem");
+    mongooseConfigs.authSource = '$external';
+    mongooseConfigs.authMechanism = 'MONGODB-X509';
+    mongooseConfigs.tlsCertificateKeyFile = path.join(__certpath, 'cert.pem');
   } catch (err) {
     logger.error({
-      file: "mainThread",
-      service: "mongoDb",
-      method: "dbOnDisconnected",
+      file: 'mainThread',
+      service: 'mongoDb',
+      method: 'dbOnDisconnected',
       meta: { err },
-      message: "Unable to write certificate",
+      message: 'Unable to write certificate',
     });
     throw err;
   }
 }
 
 function attachListeners(conn, logger) {
-  conn.on("connected", () => {
+  conn.on('connected', () => {
     const { name, host, port } = conn;
     logger.info(
       {
-        file: "mainThread",
-        service: "mongoDb",
-        method: "dbConnection",
+        file: 'mainThread',
+        service: 'mongoDb',
+        method: 'dbConnection',
       },
-      `Connected to mongo db server on ${name}:${host}:${port} successfully`,
+      `Connected to mongo db server on ${name}:${host}:${port} successfully`
     );
   });
 
-  conn.on("disconnected", () => {
+  conn.on('disconnected', () => {
     logger.warn(
       {
-        file: "mainThread",
-        service: "mongoDb",
-        method: "dbDisconnection",
+        file: 'mainThread',
+        service: 'mongoDb',
+        method: 'dbDisconnection',
       },
-      `Disconnected from mongo db server`,
+      `Disconnected from mongo db server`
     );
   });
 
-  conn.on("reconnected", () => {
+  conn.on('reconnected', () => {
     const { name, host, port } = mongoose.connection;
     logger.info(
       {
-        file: "mainThread",
-        service: "mongoDb",
-        method: "dbReconnection",
+        file: 'mainThread',
+        service: 'mongoDb',
+        method: 'dbReconnection',
       },
-      `Reconnected to mongo db server on ${name}:${host}:${port} successfully`,
+      `Reconnected to mongo db server on ${name}:${host}:${port} successfully`
     );
   });
 
-  conn.on("error", (err) => {
+  conn.on('error', err => {
     logger.error(
       {
-        file: "mainThread",
-        service: "mongoDb",
-        method: "dbConnectionError",
+        file: 'mainThread',
+        service: 'mongoDb',
+        method: 'dbConnectionError',
         meta: {
           err,
         },
       },
-      "Error during db connection",
+      'Error during db connection'
     );
     throw err;
   });
 }
 
 export async function dbShutdown() {
-  if (shuttingDown) return;
-  shuttingDown = true;
-  await mongoose.connection.close();
-  logger.info(
-    { file: "mainThread", service: "mongoDb", method: "shutdown" },
-    "Connection closed",
-  );
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
+  const forceKill = setTimeout(async () => {
+    logger.warn(
+      {
+        thread: 'mainThread',
+        service: 'mongoDb',
+        method: 'dbShutdown',
+      },
+      'Mongo DB connections killed forcefully, exiting'
+    );
+    // Specifying true will force kill mongo connection
+    await mongoose.connection.close(true);
+  }, 7000);
+  forceKill.unref();
+
+  try {
+    await mongoose.connection.close();
+    logger.info(
+      { file: 'mainThread', service: 'mongoDb', method: 'dbShutdown' },
+      'Connection closed'
+    );
+  } catch (err) {
+    logger.error(
+      {
+        file: 'mainThread',
+        service: 'mongoDb',
+        method: 'dbShutdown',
+        meta: { err },
+      },
+      'Error occured during db shutdown'
+    );
+    throw err;
+  } finally {
+    clearTimeout(forceKill);
+  }
 }
 
 // Create global instance of db
-export async function initDb() {
+async function initDb() {
   try {
     const conn = mongoose.connection;
     // Only attach if they aren't already there
-    if (conn.listenerCount("connected") === 0) {
+    if (conn.listenerCount('connected') === 0) {
       attachListeners(conn, logger);
+    }
+    // Ready state is connecting or connected already reuse connection
+    if (conn.readyState === 1 || conn.readyState === 2) {
+      return conn;
     }
     await mongoose.connect(DB_URL, mongooseConfigs);
     return conn;
   } catch (err) {
     logger.error(
       {
-        file: "mainThread",
-        service: "mongoDb",
-        method: "initDb",
+        file: 'mainThread',
+        service: 'mongoDb',
+        method: 'initDb',
         meta: {
           err,
         },
       },
-      "Error during db connection",
+      'Error during db connection'
     );
     throw err;
   }

@@ -1,100 +1,100 @@
-import "dotenv/config";
+import 'dotenv/config';
 
-import fs from "node:fs";
+import fs from 'node:fs';
 
-import { fileURLToPath } from "node:url";
+import { fileURLToPath } from 'node:url';
 
-import path from "node:path";
+import path from 'node:path';
 
-import { NODE_ENV } from "./configs/env.json";
+import { NODE_ENV } from './configs/env.json';
 
-import Logger from "./helpers/pino";
+import Logger from './helpers/pino';
 
-import { getChildProcesses, forkChild } from "./helpers/utils/forkChild.js";
+import { forkChild, getChildProcesses } from './helpers/utils/forkChild.js';
 
-import { dbShutdown } from "./singletons/mongoDb.js";
+import { dbShutdown } from './singletons/mongoDb.js';
 
-const __filename = fileURLToPath(import.meta.url);
+import { redisShutdown } from './singletons/redis.js';
 
-const __dirname = path.dirname(__filename);
+const __dirname = fileURLToPath(import.meta.dirname);
 
-const __rootDir = path.resolve(__dirname, "..");
+const __rootDir = path.resolve(__dirname, '..');
 
-const IS_WINDOWS = process.platform === "win32";
+const IS_WINDOWS = process.platform === 'win32';
 
 // Development (src) vs Production (build)
 const migrationPath =
-  NODE_ENV === "production"
-    ? path.join(__rootDir, "build/migration.js")
-    : path.join(__rootDir, "src/migration.js");
+  NODE_ENV === 'production'
+    ? path.join(__rootDir, 'build/migration.js')
+    : path.join(__rootDir, 'src/migration.js');
 
 const logger = new Logger();
 
 const dbMigrationProcess = forkChild(migrationPath);
 
-let shutdown = false;
+let isShuttingDown = false;
 
 async function initMigration() {
-  dbMigrationProcess.on("message", async (message) => {
+  dbMigrationProcess.on('message', async message => {
     switch (message.action) {
-      case "notifyMigrationCompleted":
+      case 'notifyMigrationCompleted':
         logger.info(
           {
-            file: "mainThread",
-            service: "index",
-            method: "initMigration",
+            file: 'mainThread',
+            service: 'index',
+            method: 'initMigration',
             meta: {
               message,
             },
           },
-          "Migration completed successfully",
+          'Migration completed successfully'
         );
         dbMigrationProcess && dbMigrationProcess.kill();
 
         // Dynamic import to start the actual server
         try {
-          await import("./app.js");
+          await import('./app.js');
         } catch (err) {
           logger.fatal(
             {
-              file: "mainThread",
-              service: "index",
-              method: "initMigration",
+              file: 'mainThread',
+              service: 'index',
+              method: 'initMigration',
               meta: { err },
             },
-            "Failed to start app after migration",
+            'Failed to start app after migration'
           );
           await shutdownOrchestrator(1);
         }
     }
   });
 
-  dbMigrationProcess.on("error", async (err) => {
+  dbMigrationProcess.on('error', async err => {
     logger.fatal(
       {
-        file: "mainThread",
-        service: "index",
-        method: "initMigration",
+        file: 'mainThread',
+        service: 'index',
+        method: 'initMigration',
         meta: {
           err,
         },
       },
-      "Migration failed due to error",
+      'Migration failed due to error'
     );
   });
 
-  dbMigrationProcess.on("exit", async (code) => {
+  dbMigrationProcess.on('exit', async code => {
     if (code !== 0) {
       logger.fatal(
         {
-          file: "mainThread",
-          service: "index",
-          method: "initMigration",
+          file: 'mainThread',
+          service: 'index',
+          method: 'initMigration',
           meta: {
             code,
           },
         },
-        `Migration exited with exit code ${code}`,
+        `Migration exited with exit code ${code}`
       );
       await shutdownOrchestrator(1);
     }
@@ -102,123 +102,134 @@ async function initMigration() {
 }
 
 async function shutdownOrchestrator(code = 0) {
-  if (shutdown) {
+  if (isShuttingDown) {
     return;
   }
+  isShuttingDown = true;
   const start = process.hrtime.bigint();
   logger.trace(
     {
-      file: "mainThread",
-      service: "index",
-      method: "shutdownOrchestrator",
+      file: 'mainThread',
+      service: 'index',
+      method: 'shutdownOrchestrator',
     },
-    `Cleanup started successfully`,
+    `Cleanup started successfully`
   );
-  shutdown = true;
 
   const forceKill = setTimeout(() => {
     process.exit(1);
   }, 10_000);
   forceKill.unref();
 
-  const childProcesses = getChildProcesses();
-  const childProcessPromises = [];
-  for (const child of childProcesses) {
-    child.send({ action: "shutdown" });
-  }
-  childProcesses.forEach((child) => {
-    const promise = new Promise((resolve) => {
-      child.on("exit", resolve);
+  try {
+    const childProcesses = getChildProcesses();
+    const childProcessPromises = [];
+    for (const child of childProcesses) {
+      child.send({ action: 'shutdown' });
+    }
+    childProcesses.forEach(child => {
+      const promise = new Promise(resolve => {
+        child.on('exit', resolve);
+      });
+      childProcessPromises.push(promise);
     });
-    childProcessPromises.push(promise);
-  });
-  await Promise.allSettled(childProcessPromises);
-  await dbShutdown();
-
-  const end = process.hrtime.bigint();
-  const durationNS = end - start;
-  // Convert to milliseconds for logging
-  const durationMS = Number(durationNS) / 1_000_000;
-
-  logger.info(
-    {
-      file: "mainThread",
-      service: "index",
-      method: "shutdownOrchestrator",
-      durationMS,
-    },
-    `Cleanup completed successfully, process exiting with exit code:${code}`,
-  );
-  process.exit(code);
+    await Promise.allSettled(childProcessPromises);
+    await Promise.allSettled([redisShutdown(), dbShutdown()]);
+  } catch (err) {
+    logger.error(
+      {
+        file: 'mainThread',
+        service: 'index',
+        method: 'shutdownOrchestrator',
+        meta: { err },
+      },
+      'Error during orchestrator cleanup'
+    );
+    code = 1;
+  } finally {
+    const end = process.hrtime.bigint();
+    const durationMS = Number((end - start) / 1_000_000n);
+    logger.info(
+      {
+        file: 'mainThread',
+        service: 'index',
+        method: 'shutdownOrchestrator',
+        durationMS,
+      },
+      `Cleanup completed successfully, process exiting with exit code:${code}`
+    );
+    clearTimeout(forceKill);
+    process.exit(code);
+  }
 }
 
-process.on("SIGINT", async (signal) => {
+process.on('SIGINT', async signal => {
   await shutdownOrchestrator(0);
 });
 
-process.on("SIGTERM", async (signal) => {
+process.on('SIGTERM', async signal => {
   await shutdownOrchestrator(0);
 });
 
-process.on("SIGUSR2", async () => {
+process.on('SIGUSR2', async () => {
   await shutdownOrchestrator(0);
 });
 
-process.on("SIGHUP", async () => {
+process.on('SIGHUP', async () => {
   await shutdownOrchestrator(0);
 });
 
 if (IS_WINDOWS) {
-  process.on("SIGBREAK", async () => {
+  process.on('SIGBREAK', async () => {
     await shutdownOrchestrator(0);
   });
 }
 
-process.on("uncaughtException", async (err) => {
+process.on('uncaughtException', async err => {
   logger.fatal(
     {
-      file: "mainThread",
-      service: "index",
-      method: "uncaughtException",
+      file: 'mainThread',
+      service: 'index',
+      method: 'uncaughtException',
       meta: {
         err,
       },
     },
-    "Uncaught Exception",
+    'Uncaught Exception'
   );
   await shutdownOrchestrator(1);
 });
 
-process.on("unhandledRejection", async (err) => {
+process.on('unhandledRejection', async err => {
   logger.fatal(
     {
-      file: "mainThread",
-      service: "index",
-      method: "Unhandled Rejection",
+      file: 'mainThread',
+      service: 'index',
+      method: 'Unhandled Rejection',
       meta: { err },
     },
-    "Unhandled Rejection",
+    'Unhandled Rejection'
   );
   await shutdownOrchestrator(1);
 });
 
-process.on("SIGQUIT", async () => {
+process.on('SIGQUIT', async () => {
   try {
-    const tmpPath = path.join(__rootDir, "tmp");
+    const tmpPath = path.join(__rootDir, 'tmp');
     fs.mkdirSync(tmpPath, { recursive: true });
     const reportPath = path.join(tmpPath, `diagnostics-${Date.now()}.json`);
     process.report.writeReport(reportPath);
-    logger.info({ reportPath }, "Diagnostic report generated due to SIGQUIT");
+    logger.info({ reportPath }, 'Diagnostic report generated due to SIGQUIT');
     await shutdownOrchestrator(0);
   } catch (err) {
     logger.fatal(
       {
-        file: "mainThread",
-        service: "index",
-        method: "SIGQUIT",
+        file: 'mainThread',
+        service: 'index',
+        method: 'SIGQUIT',
         meta: { err },
       },
-      "Error during SIGQUIT",
+      'Error during SIGQUIT'
     );
     process.exit(1);
   }

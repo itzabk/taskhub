@@ -1,12 +1,15 @@
+# This is the top-most EditorConfig file
 root = true
 
 [*]
+# Basics that every IDE understands
+charset = utf-8
 indent_style = space
 indent_size = 2
-charset = utf-8
-trim_trailing_whitespace = true
-insert_final_newline = true
 end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
 
 [*.md]
+# Markdown often needs trailing whitespace for line breaks
 trim_trailing_whitespace = false

@@ -1,0 +1,43 @@
+{
+  // --- Core Editor Settings ---
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.stickyScroll.enabled": true,
+  "editor.minimap.enabled": false, // Cleaner workspace
+  "editor.guides.bracketPairs": "active",
+
+  // --- Formatting Engine ---
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+
+  // ---  Save Actions ---
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+    "source.organizeImports": "explicit"
+  },
+
+  // --- Colour Customizations ---
+  "workbench.colorCustomizations": {
+    "editorError.foreground": "#ff0000",
+    "editorWarning.foreground": "#ffcc00",
+    "editor.selectionHighlightBackground": "#4c0dd4",
+    "editor.lineHighlightBackground": "#1a1a1a"
+  },
+
+  // --- Files to Ignore ---
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/node_modules": true,
+    "**/dist": true
+  },
+
+  // --- Emmet ---
+  "emmet.includeLanguages": {
+    "javascript": "javascriptreact"
+  },
+
+  // --- Terminal Tweaks ---
+  "terminal.integrated.fontSize": 14,
+  "terminal.integrated.scrollback": 10000
+}

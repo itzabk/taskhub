@@ -1,0 +1,265 @@
+import path from 'node:path';
+
+import { fileURLToPath } from 'node:url';
+
+import fs from 'node:fs';
+
+import Redis from 'ioredis';
+
+import Logger from '../helpers/pino';
+
+import { serverConfigs } from '../configs/serverConfigs';
+
+const __dirname = fileURLToPath(import.meta.dirname);
+
+const __certpath = path.resolve(__dirname, '../configs');
+
+const { REDIS_CONFIGS, NODE_ENV } = serverConfigs;
+
+const {
+  REDIS_URL = '',
+  REDIS_USERNAME = null,
+  REDIS_PASSWORD = null,
+  IS_REDIS_CONNECTION_ENCRYPTED = false,
+  REDIS_CA = null,
+  REDIS_CERT = null,
+  REDIS_KEY = null,
+} = REDIS_CONFIGS;
+
+const logger = new Logger();
+
+const redisConnections = new Set();
+
+let isShuttingDown = false;
+
+const redisConfigs = {
+  connectTimeout: 10_000,
+  lazyConnect: true,
+  enableReadyCheck: true,
+  retryStrategy: times => {
+    const delay = Math.min(times * 50, 2000);
+    return delay;
+  },
+  maxRetriesPerRequest: 2,
+  enableOfflineQueue: false,
+  commandTimeout: 5000,
+  noDelay: true,
+  enableAutoPipelining: true,
+  db: NODE_ENV === 'test' ? 5 : 0,
+};
+
+if (REDIS_USERNAME && REDIS_PASSWORD) {
+  redisConfigs.username = REDIS_USERNAME;
+  redisConfigs.password = REDIS_PASSWORD;
+}
+
+if (IS_REDIS_CONNECTION_ENCRYPTED) {
+  const caPath = path.join(__certpath, 'redis-ca.pem');
+  const certPath = path.join(__certpath, 'redis-cert.pem');
+  const keyPath = path.join(__certpath, 'redis-key.pem');
+
+  fs.writeFileSync(caPath, REDIS_CA);
+  fs.writeFileSync(certPath, REDIS_CERT);
+  fs.writeFileSync(keyPath, REDIS_KEY);
+
+  redisConfigs.tls = {
+    ca: fs.readFileSync(caPath),
+    cert: fs.readFileSync(certPath),
+    key: fs.readFileSync(keyPath),
+    rejectUnauthorized: true,
+  };
+}
+
+function attachListeners(client) {
+  const connectionInfo = {
+    host: client.options.host,
+    port: client.options.port,
+    db: client.options.db,
+  };
+  client.on('connect', () => {
+    logger.info(
+      {
+        file: 'mainThread',
+        service: 'redis',
+        method: 'attachListeners',
+        meta: { ...connectionInfo, status: client.status },
+      },
+      `Redis connected successfully `
+    );
+  });
+
+  client.on('ready', () => {
+    logger.info(
+      {
+        file: 'mainThread',
+        service: 'redis',
+        method: 'attachListeners',
+        meta: { ...connectionInfo, clientID: client.id },
+      },
+      'Redis is authenticated and ready'
+    );
+  });
+
+  client.on('reconnecting', () => {
+    logger.warn(
+      {
+        file: 'mainThread',
+        service: 'redis',
+        method: 'attachListeners',
+        meta: {
+          ...connectionInfo,
+          status: client.status,
+          nextRetryDelay: client.condition?.retryDelay || 0,
+          totalRetries: client.condition?.retries || 0,
+        },
+      },
+      'Redis client is reconnecting'
+    );
+  });
+
+  client.on('error', err => {
+    logger.error(
+      {
+        file: 'mainThread',
+        service: 'redis',
+        method: 'attachListeners',
+        meta: {
+          err,
+          ...connectionInfo,
+          status: client.status,
+          retryAttempt: client.condition?.retries || 0,
+        },
+      },
+      'Error occured during redis connection'
+    );
+    throw err;
+  });
+
+  client.on('close', () => {
+    logger.warn(
+      {
+        file: 'mainThread',
+        service: 'redis',
+        method: 'attachListeners',
+        meta: { ...connectionInfo, status: client.status },
+      },
+      'Redis client has closed'
+    );
+  });
+
+  client.on('end', () => {
+    logger.info(
+      {
+        file: 'mainThread',
+        service: 'redis',
+        method: 'attachListeners',
+        meta: { ...connectionInfo, status: client.status },
+      },
+      'Redis client has completely ended its connection'
+    );
+  });
+}
+
+export async function createNewRedisClient(processName = 'default', overrides = {}) {
+  try {
+    const mergedConfigs = { ...redisConfigs, ...overrides };
+    const client = new Redis(REDIS_URL, mergedConfigs);
+    if (client.listenerCount('ready') === 0) {
+      attachListeners(client);
+    }
+    await client.connect();
+    const connectionEntity = { type: processName, client };
+    redisConnections.add(connectionEntity);
+    client.once('end', () => {
+      redisConnections.delete(connectionEntity);
+    });
+    return client;
+  } catch (err) {
+    logger.fatal(
+      {
+        file: 'mainThread',
+        service: 'redis',
+        method: 'createNewClient',
+        meta: { err },
+      },
+      'Error occured while creating redis client'
+    );
+    throw err;
+  }
+}
+
+export async function redisShutdown() {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
+  const clients = getRedisClients();
+
+  if (!clients.length) {
+    return;
+  }
+
+  const forceKill = setTimeout(async () => {
+    const killPromises = clients.map(entity => entity.client.disconnect());
+    await Promise.allSettled(killPromises);
+    logger.warn(
+      {
+        thread: 'mainThread',
+        service: 'redis',
+        method: 'redisShutdown',
+      },
+      'Redis connections killed forcefully, exiting'
+    );
+  }, 5000);
+  forceKill.unref();
+
+  try {
+    const closePromises = clients.map(entity => entity.client.quit());
+
+    await Promise.allSettled(closePromises);
+    logger.info(
+      { file: 'mainThread', service: 'redis', method: 'redisShutdown' },
+      'All Redis connections closed gracefully'
+    );
+  } catch (err) {
+    logger.error(
+      { file: 'mainThread', service: 'redis', method: 'redisShutdown', meta: { err } },
+      'Error occured during redis shutdown'
+    );
+    throw err;
+  } finally {
+    clearTimeout(forceKill);
+  }
+}
+
+export async function duplicateRedisClient(originalClient, processName) {
+  try {
+    const duplicate = originalClient.duplicate();
+    if (duplicate.listenerCount('ready') === 0) {
+      attachListeners(duplicate);
+    }
+    await duplicate.connect();
+    const connectionEntity = { type: processName, client: duplicate };
+    redisConnections.add(connectionEntity);
+    duplicate.once('end', () => {
+      redisConnections.delete(connectionEntity);
+    });
+    return duplicate;
+  } catch (err) {
+    logger.fatal(
+      {
+        file: 'mainThread',
+        service: 'redis',
+        method: 'duplicateRedisClient',
+        meta: { err },
+      },
+      'Error occured while duplicating client, exiting'
+    );
+    throw err;
+  }
+}
+
+export function getRedisClients() {
+  return Array.from(redisConnections);
+}
+
+export const defaultRedisClient = await createNewRedisClient('main');

@@ -11,7 +11,17 @@ dist/
 build/
 
 # IDE files
-.vscode/
+# Ignore personal VS Code files
+.vscode/*
+
+# Allow the team-critical settings
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Ignore local history and state
+.vscode/project-history/
 .idea/
 
 # Logs
@@ -19,5 +29,3 @@ logs/
 *.log
 npm-debug.log*
 
-# Configs / Env Configs
-/src/config/
