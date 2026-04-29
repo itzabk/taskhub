@@ -20,6 +20,7 @@
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "ioredis": "^5.10.1",
+    "migrate-mongo": "^14.0.7",
     "mongoose": "^9.5.0",
     "nodemailer": "^8.0.6",
     "pino": "^10.3.1",
