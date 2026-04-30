@@ -2,13 +2,11 @@ import fs from 'node:fs';
 
 import path from 'node:path';
 
-import { fileURLToPath } from 'node:url';
-
 import mongoose from 'mongoose';
 
-import { serverConfigs } from '../configs/serverConfigs';
+import { serverConfigs } from '../configs/serverConfigs.js';
 
-import Logger from '../helpers/pino';
+import Logger from '../helpers/pino/index.js';
 
 const { DB_CONFIGS } = serverConfigs;
 
@@ -20,7 +18,7 @@ const {
   IS_DATABASE_CONNECTION_ENCRYPTED = false,
 } = DB_CONFIGS;
 
-const __dirname = fileURLToPath(import.meta.dirname);
+const __dirname = import.meta.dirname;
 
 const __certpath = path.resolve(__dirname, '../configs');
 
@@ -39,7 +37,7 @@ const mongooseConfigs = {
   connectTimeoutMS: 15_000,
   socketTimeoutMS: 15_000,
   heartbeatFrequencyMS: 10_000,
-  family: 0,
+  family: 4,
   readPreference: 'primaryPreferred',
 };
 

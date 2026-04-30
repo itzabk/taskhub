@@ -1,16 +1,14 @@
 import path from 'node:path';
 
-import { fileURLToPath } from 'node:url';
-
 import fs from 'node:fs';
 
 import Redis from 'ioredis';
 
-import Logger from '../helpers/pino';
+import Logger from '../helpers/pino/index.js';
 
-import { serverConfigs } from '../configs/serverConfigs';
+import { serverConfigs } from '../configs/serverConfigs.js';
 
-const __dirname = fileURLToPath(import.meta.dirname);
+const __dirname = import.meta.dirname;
 
 const __certpath = path.resolve(__dirname, '../configs');
 

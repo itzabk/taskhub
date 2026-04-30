@@ -1,10 +1,10 @@
-import { config, database } from 'migrate-mongo';
+import { config, up } from 'migrate-mongo';
 
-import { config as migrateConfig } from './configs/migrate-mongo-config';
+import migrateConfig from './configs/migrate-mongo-config.js';
 
-import Logger from './helpers/pino';
+import Logger from './helpers/pino/index.js';
 
-import { db } from './singletons/mongoDb';
+import { db } from './singletons/mongoDb.js';
 
 const logger = new Logger();
 
@@ -24,14 +24,14 @@ async function runMigrations() {
     const dbConn = db.db; // actual MongoDB Db instance
     const client = db.getClient();
 
-    const migratedFiles = await database.up(dbConn, client);
+    const migratedFiles = await up(dbConn, client);
 
     if (migratedFiles.length > 0) {
       for (const fileName of migratedFiles) {
         logger.info(
           {
-            service: 'migration',
-            file: 'runMigrations',
+            service: 'runMigrations',
+            file: 'migration',
             method: 'database.up',
             meta: { migrationFile: fileName },
           },
@@ -41,8 +41,8 @@ async function runMigrations() {
     } else {
       logger.info(
         {
-          service: 'migration',
-          file: 'runMigrations',
+          service: 'runMigrations',
+          file: 'migration',
           method: 'database.up',
         },
         'Database is up to date.'
@@ -55,8 +55,8 @@ async function runMigrations() {
   } catch (err) {
     logger.error(
       {
-        service: 'migration',
-        file: 'runMigrations',
+        service: 'runMigrations',
+        file: 'migration',
         method: 'database.up',
         meta: { err },
       },
