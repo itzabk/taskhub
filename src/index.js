@@ -1,26 +1,22 @@
-import 'dotenv/config';
-
 import fs from 'node:fs';
-
-import { fileURLToPath } from 'node:url';
 
 import path from 'node:path';
 
-import { NODE_ENV } from './configs/env.json';
+import { serverConfigs } from './configs/serverConfigs.js';
 
-import Logger from './helpers/pino';
+import Logger from './helpers/pino/index.js';
 
-import { forkChild, getChildProcesses } from './helpers/utils/forkChild.js';
+import { forkChild } from './helpers/utils/forkChild.js';
 
-import { dbShutdown } from './singletons/mongoDb.js';
+import { shutdownOrchestrator } from './shutdownOrchestrator.js';
 
-import { redisShutdown } from './singletons/redis.js';
-
-const __dirname = fileURLToPath(import.meta.dirname);
+const __dirname = import.meta.dirname;
 
 const __rootDir = path.resolve(__dirname, '..');
 
 const IS_WINDOWS = process.platform === 'win32';
+
+const { NODE_ENV } = serverConfigs;
 
 // Development (src) vs Production (build)
 const migrationPath =
@@ -31,8 +27,6 @@ const migrationPath =
 const logger = new Logger();
 
 const dbMigrationProcess = forkChild(migrationPath);
-
-let isShuttingDown = false;
 
 async function initMigration() {
   dbMigrationProcess.on('message', async message => {
@@ -99,68 +93,6 @@ async function initMigration() {
       await shutdownOrchestrator(1);
     }
   });
-}
-
-async function shutdownOrchestrator(code = 0) {
-  if (isShuttingDown) {
-    return;
-  }
-  isShuttingDown = true;
-  const start = process.hrtime.bigint();
-  logger.trace(
-    {
-      file: 'mainThread',
-      service: 'index',
-      method: 'shutdownOrchestrator',
-    },
-    `Cleanup started successfully`
-  );
-
-  const forceKill = setTimeout(() => {
-    process.exit(1);
-  }, 10_000);
-  forceKill.unref();
-
-  try {
-    const childProcesses = getChildProcesses();
-    const childProcessPromises = [];
-    for (const child of childProcesses) {
-      child.send({ action: 'shutdown' });
-    }
-    childProcesses.forEach(child => {
-      const promise = new Promise(resolve => {
-        child.on('exit', resolve);
-      });
-      childProcessPromises.push(promise);
-    });
-    await Promise.allSettled(childProcessPromises);
-    await Promise.allSettled([redisShutdown(), dbShutdown()]);
-  } catch (err) {
-    logger.error(
-      {
-        file: 'mainThread',
-        service: 'index',
-        method: 'shutdownOrchestrator',
-        meta: { err },
-      },
-      'Error during orchestrator cleanup'
-    );
-    code = 1;
-  } finally {
-    const end = process.hrtime.bigint();
-    const durationMS = Number((end - start) / 1_000_000n);
-    logger.info(
-      {
-        file: 'mainThread',
-        service: 'index',
-        method: 'shutdownOrchestrator',
-        durationMS,
-      },
-      `Cleanup completed successfully, process exiting with exit code:${code}`
-    );
-    clearTimeout(forceKill);
-    process.exit(code);
-  }
 }
 
 process.on('SIGINT', async signal => {
