@@ -39,7 +39,7 @@ async function initMigration() {
               message,
             },
           },
-          'Migration completed successfully'
+          'Database migration completed successfully, starting application'
         );
         dbMigrationProcess && dbMigrationProcess.kill();
 
@@ -54,7 +54,7 @@ async function initMigration() {
               method: 'initMigration',
               meta: { err },
             },
-            'Failed to start app after migration'
+            'Failed to start application after database migration completed'
           );
           await shutdownOrchestrator(1);
         }
@@ -71,7 +71,7 @@ async function initMigration() {
           err,
         },
       },
-      'Migration failed due to error'
+      'Database migration process encountered a fatal error, aborting startup'
     );
   });
 
@@ -86,7 +86,7 @@ async function initMigration() {
             code,
           },
         },
-        `Migration exited with exit code ${code}`
+        `Database migration process exited with code ${code}, aborting startup`
       );
       await shutdownOrchestrator(1);
     }
@@ -125,7 +125,7 @@ process.on('uncaughtException', async err => {
         err,
       },
     },
-    'Uncaught Exception'
+    'Uncaught exception encountered in main process, initiating graceful shutdown'
   );
   await shutdownOrchestrator(1);
 });
@@ -138,7 +138,7 @@ process.on('unhandledRejection', async err => {
       method: 'Unhandled Rejection',
       meta: { err },
     },
-    'Unhandled Rejection'
+    'Unhandled promise rejection in main process, initiating graceful shutdown'
   );
   await shutdownOrchestrator(1);
 });
@@ -149,7 +149,7 @@ process.on('SIGQUIT', async () => {
     fs.mkdirSync(tmpPath, { recursive: true });
     const reportPath = path.join(tmpPath, `diagnostics-${Date.now()}.json`);
     process.report.writeReport(reportPath);
-    logger.info({ reportPath }, 'Diagnostic report generated due to SIGQUIT');
+    logger.info({ reportPath }, 'Diagnostic report generated successfully on SIGQUIT signal');
     await shutdownOrchestrator(0);
   } catch (err) {
     logger.fatal(
@@ -159,7 +159,7 @@ process.on('SIGQUIT', async () => {
         method: 'SIGQUIT',
         meta: { err },
       },
-      'Error during SIGQUIT'
+      'Failed to generate diagnostic report on SIGQUIT signal'
     );
     process.exit(1);
   }

@@ -32,7 +32,7 @@ async function initAwilixContainer() {
       service: 'awilix',
       method: 'initAwilixContainer',
     },
-    'Started initializing awilix container'
+    'Initializing dependency injection container'
   );
   try {
     const container = createContainer({
@@ -54,7 +54,7 @@ async function initAwilixContainer() {
         service: 'awilix',
         method: 'initAwilixContainer',
       },
-      'Awilix container created successfully'
+      'Dependency injection container initialized successfully'
     );
 
     return container;
@@ -66,7 +66,7 @@ async function initAwilixContainer() {
         method: 'initAwilixContainer',
         meta: { err },
       },
-      'Error occured during awilix container creation'
+      'Failed to initialize dependency injection container'
     );
     throw err;
   }

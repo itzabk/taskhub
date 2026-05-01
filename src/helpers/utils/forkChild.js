@@ -14,7 +14,7 @@ export function forkChild(path = '', args = [], options = {}) {
         service: 'helpers:utils',
         method: 'forkChild',
       },
-      'Invalid path specified for forking child process'
+      'Child process initialization failed: invalid or missing file path'
     );
     throw new Error('Invalid path specified for forking child process');
   }

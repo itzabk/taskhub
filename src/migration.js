@@ -14,7 +14,7 @@ async function runMigrations() {
         service: 'migration',
         method: 'runMigrations',
       },
-      'Migration process started'
+      'Database migration process initiated'
     );
 
     config.set(migrateConfig);
@@ -33,7 +33,7 @@ async function runMigrations() {
             method: 'database.up',
             meta: { migrationFile: fileName },
           },
-          `Applied: ${fileName}`
+          `Database migration file applied: ${fileName}`
         );
       }
     } else {
@@ -43,7 +43,7 @@ async function runMigrations() {
           file: 'migration',
           method: 'database.up',
         },
-        'Database is up to date.'
+        'Database schema is already up to date, no migrations needed'
       );
     }
 
@@ -58,7 +58,7 @@ async function runMigrations() {
         method: 'database.up',
         meta: { err },
       },
-      'FATAL: Migration failed.'
+      'Database migration process failed with error'
     );
 
     throw err;

@@ -51,13 +51,15 @@ if (IS_DATABASE_CONNECTION_ENCRYPTED) {
     mongooseConfigs.authMechanism = 'MONGODB-X509';
     mongooseConfigs.tlsCertificateKeyFile = path.join(__certpath, 'cert.pem');
   } catch (err) {
-    logger.error({
-      file: 'mainThread',
-      service: 'mongoDb',
-      method: 'dbOnDisconnected',
-      meta: { err },
-      message: 'Unable to write certificate',
-    });
+    logger.error(
+      {
+        file: 'mainThread',
+        service: 'mongoDb',
+        method: 'initDb',
+        meta: { err },
+      },
+      'Failed to write database certificate file'
+    );
     throw err;
   }
 }
@@ -71,7 +73,7 @@ function attachListeners(conn, logger) {
         service: 'mongoDb',
         method: 'dbConnection',
       },
-      `Connected to mongo db server on ${name}:${host}:${port} successfully`
+      `Connected to MongoDB server at ${host}:${port}/${name} successfully`
     );
   });
 
@@ -82,7 +84,7 @@ function attachListeners(conn, logger) {
         service: 'mongoDb',
         method: 'dbDisconnection',
       },
-      `Disconnected from mongo db server`
+      `Disconnected from MongoDB server`
     );
   });
 
@@ -94,7 +96,7 @@ function attachListeners(conn, logger) {
         service: 'mongoDb',
         method: 'dbReconnection',
       },
-      `Reconnected to mongo db server on ${name}:${host}:${port} successfully`
+      `Reconnected to MongoDB server at ${host}:${port}/${name} successfully`
     );
   });
 
@@ -108,7 +110,7 @@ function attachListeners(conn, logger) {
           err,
         },
       },
-      'Error during db connection'
+      'Error occurred during database connection'
     );
     throw err;
   });
@@ -125,7 +127,7 @@ export async function dbShutdown() {
         service: 'mongoDb',
         method: 'dbShutdown',
       },
-      'Mongo DB connections killed forcefully, exiting'
+      'MongoDB connections forcibly terminated due to shutdown timeout'
     );
     // Specifying true will force kill mongo connection
     await mongoose.connection.close(true);
@@ -136,7 +138,7 @@ export async function dbShutdown() {
     await mongoose.connection.close();
     logger.info(
       { file: 'mainThread', service: 'mongoDb', method: 'dbShutdown' },
-      'Connection closed'
+      'Database connection closed successfully'
     );
   } catch (err) {
     logger.error(
@@ -146,7 +148,7 @@ export async function dbShutdown() {
         method: 'dbShutdown',
         meta: { err },
       },
-      'Error occured during db shutdown'
+      'Error occurred during database shutdown'
     );
     throw err;
   } finally {
@@ -178,7 +180,7 @@ async function initDb() {
           err,
         },
       },
-      'Error during db connection'
+      'Error occurred during database connection initialization'
     );
     throw err;
   }

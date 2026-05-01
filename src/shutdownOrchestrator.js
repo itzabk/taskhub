@@ -20,7 +20,7 @@ export async function shutdownOrchestrator(code = 0) {
       service: 'index',
       method: 'shutdownOrchestrator',
     },
-    `Cleanup started successfully`
+    'Application shutdown initiated, beginning graceful cleanup'
   );
 
   const forceKill = setTimeout(() => {
@@ -52,7 +52,7 @@ export async function shutdownOrchestrator(code = 0) {
         method: 'shutdownOrchestrator',
         meta: { err },
       },
-      'Error during orchestrator cleanup'
+      'Error occurred during graceful shutdown, forcing exit'
     );
     code = 1;
   } finally {
@@ -65,7 +65,7 @@ export async function shutdownOrchestrator(code = 0) {
         method: 'shutdownOrchestrator',
         durationMS,
       },
-      `Cleanup completed, process exiting with exit code:${code}`
+      `Application shutdown completed successfully in ${durationMS}ms, exiting with code ${code}`
     );
     clearTimeout(forceKill);
     process.exit(code);

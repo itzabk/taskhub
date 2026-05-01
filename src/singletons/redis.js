@@ -80,7 +80,7 @@ function attachListeners(client) {
         method: 'attachListeners',
         meta: { ...connectionInfo, status: client.status },
       },
-      `Redis connected successfully `
+      `Redis client connected successfully`
     );
   });
 
@@ -92,7 +92,7 @@ function attachListeners(client) {
         method: 'attachListeners',
         meta: { ...connectionInfo, clientID: client.id },
       },
-      'Redis is authenticated and ready'
+      'Redis client authenticated and ready for operations'
     );
   });
 
@@ -109,7 +109,7 @@ function attachListeners(client) {
           totalRetries: client.condition?.retries || 0,
         },
       },
-      'Redis client is reconnecting'
+      'Redis client attempting to reconnect to server'
     );
   });
 
@@ -126,7 +126,7 @@ function attachListeners(client) {
           retryAttempt: client.condition?.retries || 0,
         },
       },
-      'Error occured during redis connection'
+      'Error occurred during redis connection'
     );
     throw err;
   });
@@ -139,7 +139,7 @@ function attachListeners(client) {
         method: 'attachListeners',
         meta: { ...connectionInfo, status: client.status },
       },
-      'Redis client has closed'
+      'Redis client connection closed'
     );
   });
 
@@ -151,7 +151,7 @@ function attachListeners(client) {
         method: 'attachListeners',
         meta: { ...connectionInfo, status: client.status },
       },
-      'Redis client has completely ended its connection'
+      'Redis client connection terminated completely'
     );
   });
 }
@@ -178,7 +178,7 @@ export async function createNewRedisClient(processName = 'default', overrides = 
         method: 'createNewClient',
         meta: { err },
       },
-      'Error occured while creating redis client'
+      'Failed to create redis client connection'
     );
     throw err;
   }
@@ -203,7 +203,7 @@ export async function redisShutdown() {
         service: 'redis',
         method: 'redisShutdown',
       },
-      'Redis connections killed forcefully, exiting'
+      'Redis connections forcibly terminated due to shutdown timeout'
     );
   }, 5000);
   forceKill.unref();
@@ -214,12 +214,12 @@ export async function redisShutdown() {
     await Promise.allSettled(closePromises);
     logger.info(
       { file: 'mainThread', service: 'redis', method: 'redisShutdown' },
-      'All Redis connections closed gracefully'
+      'All Redis connections closed successfully'
     );
   } catch (err) {
     logger.error(
       { file: 'mainThread', service: 'redis', method: 'redisShutdown', meta: { err } },
-      'Error occured during redis shutdown'
+      'Error occurred during redis shutdown process'
     );
     throw err;
   } finally {
@@ -248,7 +248,7 @@ export async function duplicateRedisClient(originalClient, processName) {
         method: 'duplicateRedisClient',
         meta: { err },
       },
-      'Error occured while duplicating client, exiting'
+      'Failed to duplicate redis client connection'
     );
     throw err;
   }
