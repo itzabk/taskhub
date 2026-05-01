@@ -6,6 +6,8 @@ import { serverConfigs } from './configs/serverConfigs.js';
 
 import { logger } from './helpers/pino/index.js';
 
+import { startServer } from './express.js';
+
 const noOfCores = os.availableParallelism();
 
 const { EXPRESS_WORKERS } = serverConfigs;
@@ -25,7 +27,7 @@ if (Cluster.isPrimary) {
           workerPid: worker.process.pid,
         },
       },
-      `Cluster worker process with pid ${worker.pid} forked successfully`
+      `Cluster worker process with pid ${worker.process.pid} forked successfully`
     );
   });
 
@@ -41,7 +43,7 @@ if (Cluster.isPrimary) {
           workerPid: worker.process.pid,
         },
       },
-      `Cluster worker process with pid ${worker.pid} is online and ready to accept requests`
+      `Cluster worker process with pid ${worker.process.pid} is online and ready to accept requests`
     );
   });
 
@@ -86,4 +88,5 @@ if (Cluster.isPrimary) {
     Cluster.fork();
   }
 } else {
+  await startServer();
 }

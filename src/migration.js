@@ -6,10 +6,17 @@ import { db } from './singletons/mongoDb.js';
 
 import { logger } from './helpers/pino/index.js';
 
-process.send({ action: 'ready' });
+import { shutdownOrchestrator } from './shutdownOrchestrator.js';
+
+if (process.send) {
+  process.send({ action: 'ready' });
+}
+
+const PLATFORM = process.platform;
 
 async function runMigrations() {
   try {
+    const start = process.hrtime.bigint();
     logger.trace(
       {
         file: 'migration',
@@ -27,6 +34,8 @@ async function runMigrations() {
     const migratedFiles = await up(dbConn, client);
 
     if (migratedFiles.length > 0) {
+      const end = process.hrtime.bigint();
+      const durationMS = Number((end - start) / 1_000_000n);
       for (const fileName of migratedFiles) {
         logger.info(
           {
@@ -34,16 +43,20 @@ async function runMigrations() {
             file: 'migration',
             method: 'database.up',
             meta: { migrationFile: fileName },
+            durationMS,
           },
           `Database migration file applied: ${fileName}`
         );
       }
     } else {
+      const end = process.hrtime.bigint();
+      const durationMS = Number((end - start) / 1_000_000n);
       logger.info(
         {
           service: 'runMigrations',
           file: 'migration',
           method: 'database.up',
+          durationMS,
         },
         'Database schema is already up to date, no migrations needed'
       );
@@ -53,25 +66,92 @@ async function runMigrations() {
 
     return true;
   } catch (err) {
+    const end = process.hrtime.bigint();
+    const durationMS = Number((end - start) / 1_000_000n);
     logger.error(
       {
         service: 'runMigrations',
         file: 'migration',
         method: 'database.up',
+        durationMS,
         meta: { err },
       },
       'Database migration process failed with error'
     );
 
-    throw err;
+    process.send({
+      action: 'notifyMigrationFailed',
+      error: {
+        message: err.message,
+        stack: err.stack,
+        name: err.name,
+      },
+    });
   }
 }
 
 process.on('message', async msg => {
   if (msg.action === 'shutdown') {
-    await db.close();
-    process.exit(0);
+    await shutdownOrchestrator(0);
   }
 });
+
+function forceKill() {
+  const timeout = setTimeout(() => {
+    process.exit(1);
+  }, 10_000);
+  timeout.unref();
+  logger.warn(
+    {
+      service: 'runMigrations',
+      file: 'migration',
+      method: 'database.up',
+    },
+    'Database migration process exited abruptly'
+  );
+}
+
+process.on('exit', code => {
+  if (code !== 0) {
+    logger.error(
+      {
+        service: 'runMigrations',
+        file: 'migration',
+        method: 'database.up',
+        meta: { code },
+      },
+      'Database migration process failed with exit'
+    );
+  }
+});
+
+process.on('disconnect', () => {
+  logger.trace(
+    {
+      service: 'runMigrations',
+      file: 'migration',
+      method: 'database.up',
+    },
+    'Database migration IPC disconnected with parent'
+  );
+});
+
+process.on('SIGINT', () => {
+  forceKill();
+});
+
+process.on('SIGTERM', () => {
+  forceKill();
+});
+
+process.on('SIGUSR2', () => {
+  forceKill();
+});
+
+if (PLATFORM === 'win32') {
+  process.on('SIGBREAK', () => {
+    forceKill();
+  });
+}
 
 await runMigrations();

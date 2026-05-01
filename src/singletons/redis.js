@@ -78,9 +78,9 @@ function attachListeners(client) {
         file: 'mainThread',
         service: 'redis',
         method: 'attachListeners',
-        meta: { ...connectionInfo, status: client.status },
+        meta: { ...connectionInfo, status: client.status, pid: process.pid },
       },
-      `Redis client connected successfully`
+      `Redis client  ${connectionInfo.host} ${connectionInfo.port}  connected successfully`
     );
   });
 
@@ -90,9 +90,9 @@ function attachListeners(client) {
         file: 'mainThread',
         service: 'redis',
         method: 'attachListeners',
-        meta: { ...connectionInfo, clientID: client.id },
+        meta: { ...connectionInfo, clientID: client.id, pid: process.pid },
       },
-      'Redis client authenticated and ready for operations'
+      `Redis client ${connectionInfo.host} ${connectionInfo.port}  authenticated and ready for operations`
     );
   });
 
@@ -107,6 +107,7 @@ function attachListeners(client) {
           status: client.status,
           nextRetryDelay: client.condition?.retryDelay || 0,
           totalRetries: client.condition?.retries || 0,
+          pid: process.pid,
         },
       },
       'Redis client attempting to reconnect to server'
@@ -124,6 +125,7 @@ function attachListeners(client) {
           ...connectionInfo,
           status: client.status,
           retryAttempt: client.condition?.retries || 0,
+          pid: process.pid,
         },
       },
       'Error occurred during redis connection'
@@ -137,7 +139,7 @@ function attachListeners(client) {
         file: 'mainThread',
         service: 'redis',
         method: 'attachListeners',
-        meta: { ...connectionInfo, status: client.status },
+        meta: { ...connectionInfo, status: client.status, pid: process.pid },
       },
       'Redis client connection closed'
     );
@@ -149,7 +151,7 @@ function attachListeners(client) {
         file: 'mainThread',
         service: 'redis',
         method: 'attachListeners',
-        meta: { ...connectionInfo, status: client.status },
+        meta: { ...connectionInfo, status: client.status, pid: process.pid },
       },
       'Redis client connection terminated completely'
     );
@@ -176,7 +178,7 @@ export async function createNewRedisClient(processName = 'default', overrides = 
         file: 'mainThread',
         service: 'redis',
         method: 'createNewClient',
-        meta: { err },
+        meta: { err, pid: process.pid },
       },
       'Failed to create redis client connection'
     );
@@ -202,6 +204,7 @@ export async function redisShutdown() {
         thread: 'mainThread',
         service: 'redis',
         method: 'redisShutdown',
+        meta: { pid: process.pid },
       },
       'Redis connections forcibly terminated due to shutdown timeout'
     );
@@ -218,7 +221,12 @@ export async function redisShutdown() {
     );
   } catch (err) {
     logger.error(
-      { file: 'mainThread', service: 'redis', method: 'redisShutdown', meta: { err } },
+      {
+        file: 'mainThread',
+        service: 'redis',
+        method: 'redisShutdown',
+        meta: { err, pid: process.pid },
+      },
       'Error occurred during redis shutdown process'
     );
     throw err;
@@ -246,7 +254,7 @@ export async function duplicateRedisClient(originalClient, processName) {
         file: 'mainThread',
         service: 'redis',
         method: 'duplicateRedisClient',
-        meta: { err },
+        meta: { err, pid: process.pid },
       },
       'Failed to duplicate redis client connection'
     );

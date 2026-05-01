@@ -14,13 +14,15 @@ import pinoHttp from 'pino-http';
 
 import qs from 'qs';
 
-import router from './api/routes/index.js';
+import { router } from './api/routes.js';
 
-import { logger } from './helpers/pino/index.js';
+import { apiResponse } from './helpers/pino/pino.js';
 
 import { shutdownOrchestrator } from './shutdownOrchestrator.js';
 
 import { serverConfigs } from './configs/serverConfigs.js';
+
+import { logger } from './helpers/pino/index.js';
 
 const {
   NODE_PORT = 3000,
@@ -66,7 +68,7 @@ export function createExpressApp() {
 
   app.use(
     pinoHttp({
-      logger: logger.apiResponse ?? logger,
+      logger: apiResponse,
       genReqId: req => req.id,
       customProps: () => ({
         pid: process.pid,
@@ -114,7 +116,7 @@ export function createExpressApp() {
     })
   );
 
-  app.options('*', cors());
+  app.options('/*splat', cors());
 
   app.use(
     rateLimit({
@@ -170,7 +172,7 @@ export function startServer() {
   const server = app.listen(Number(NODE_PORT), () => {
     logger.info?.(
       {
-        file: 'expressApp',
+        file: 'expressWorker',
         service: 'server',
         method: 'startServer',
         meta: {

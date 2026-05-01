@@ -32,4 +32,5 @@ export const serverConfigs = {
   },
 
   EXPRESS_WORKERS: Number(process.env.EXPRESS_WORKERS || 2),
+  ALLOWED_EXTERNAL_ORIGINS: process.env.ALLOWED_EXTERNAL_ORIGINS,
 };
