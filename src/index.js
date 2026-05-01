@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { serverConfigs } from './configs/serverConfigs.js';
 
-import Logger from './helpers/pino/index.js';
+import { logger } from './helpers/pino/index.js';
 
 import { forkChild } from './helpers/utils/forkChild.js';
 
@@ -23,8 +23,6 @@ const migrationPath =
   NODE_ENV === 'production'
     ? path.join(__rootDir, 'build/migration.js')
     : path.join(__rootDir, 'src/migration.js');
-
-const logger = new Logger();
 
 const dbMigrationProcess = forkChild(migrationPath);
 

@@ -2,11 +2,9 @@ import { config, up } from 'migrate-mongo';
 
 import migrateConfig from './configs/migrate-mongo-config.js';
 
-import Logger from './helpers/pino/index.js';
-
 import { db } from './singletons/mongoDb.js';
 
-const logger = new Logger();
+import { logger } from './helpers/pino/index.js';
 
 async function runMigrations() {
   try {

@@ -6,9 +6,7 @@ import { defaultRedisClient } from './redis';
 
 import { asClass, asValue, createContainer, InjectionMode, Lifetime } from 'awilix';
 
-import Logger from '../helpers/pino/index.js';
-
-const logger = new Logger();
+import { logger } from '../helpers/pino/index.js';
 
 const awilixOpts = {
   formatName: (name, descriptor) => {

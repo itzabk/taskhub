@@ -2,11 +2,9 @@ import { fork } from 'node:child_process';
 
 import { existsSync } from 'node:fs';
 
-import Logger from '../pino';
+import { logger } from '../pino/index.js';
 
 const childProcessSet = new Set();
-
-const logger = new Logger();
 
 export function forkChild(path = '', args = [], options = {}) {
   if (!existsSync(path) || !path) {

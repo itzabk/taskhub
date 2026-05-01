@@ -1,4 +1,4 @@
-import * as logger from "./pino";
+import * as logger from './pino.js';
 
 // Payload Structure
 // const payload = {
@@ -9,66 +9,66 @@ import * as logger from "./pino";
 //     meta:{}
 // }
 
-export default class Logger {
-  constructor(payload, msg) {
-    this.payload = payload || {};
-    this.msg = msg || "";
-  }
+class Logger {
+  assert(payload, msg) {
+    const { file } = payload;
+    const requiredKeys = ['file', 'service', 'method'];
 
-  assert(payload = {}, msg = "") {
-    const requiredKeys = ["file", "service", "method"];
-    // Check if required keys exists in payload
     const payloadKeys = Object.keys(payload);
-    requiredKeys.forEach((key) => {
+    requiredKeys.forEach(key => {
       if (!payloadKeys.includes(key)) {
-        throw new Error(
-          `Missing key: "${key}" in logger payload:`,
-          JSON.stringify(payload, null, 2),
-        );
+        throw new Error(`Missing key: "${key}" in logger payload: ${JSON.stringify(payload)}`);
       }
     });
 
-    // Checkif logger exists;
     if (!logger[file]) {
-      throw new Error(`Logger "${file}" not found`);
+      throw new Error(`Logger instance "${file}" not found in pino.js exports`);
     }
-    // Check if message is not empty
+
     if (!msg) {
       throw new Error(`Invalid payload message: ${JSON.stringify(payload)}`);
     }
   }
 
-  log(level) {
-    this.assert(this.payload, this.msg);
+  log(level, dynamicPayload, dynamicMsg) {
+    const finalPayload = dynamicPayload || {};
+    const finalMsg = dynamicMsg || '';
+    this.assert(finalPayload, finalMsg);
 
-    const { file, meta = {}, ...rest } = this.payload;
-    const { error, ...otherMeta } = meta;
+    const { file, meta = {}, ...rest } = finalPayload;
+
+    // Support both 'error' and 'err' in meta
+    const errorObj = meta.error || meta.err;
+    const { error, err, ...otherMeta } = meta;
 
     const logData = {
       ...rest,
       ...otherMeta,
-      ...(error ? { err: error } : {}),
+      ...(errorObj ? { err: errorObj } : {}),
     };
 
-    return logger[file][level](logData, this.msg);
+    return logger[file][level](logData, finalMsg);
   }
 
-  trace() {
-    return this.log("trace");
+  // Pass arguments through to the log method
+  trace(p, m) {
+    return this.log('trace', p, m);
   }
-  debug() {
-    return this.log("debug");
+  debug(p, m) {
+    return this.log('debug', p, m);
   }
-  info() {
-    return this.log("info");
+  info(p, m) {
+    return this.log('info', p, m);
   }
-  warn() {
-    return this.log("warn");
+  warn(p, m) {
+    return this.log('warn', p, m);
   }
-  error() {
-    return this.log("error");
+  error(p, m) {
+    return this.log('error', p, m);
   }
-  fatal() {
-    return this.log("fatal");
+  fatal(p, m) {
+    return this.log('fatal', p, m);
   }
 }
+
+export const logger = new Logger();

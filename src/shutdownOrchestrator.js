@@ -4,9 +4,7 @@ import { redisShutdown } from './singletons/redis.js';
 
 import { getChildProcesses } from './helpers/utils/forkChild.js';
 
-import Logger from './helpers/pino/index.js';
-
-const logger = new Logger();
+import { logger } from './helpers/pino/index.js';
 
 let isShuttingDown = false;
 

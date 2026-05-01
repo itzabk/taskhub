@@ -1,15 +1,15 @@
 import path from 'node:path';
 
-import { fileURLToPath } from 'node:url';
-
 import fs from 'node:fs';
 
 import pino from 'pino';
 
-import { LOG_CONFIGS, NODE_ENV } from '../../configs/serverConfigs';
+import { serverConfigs } from '../../configs/serverConfigs.js';
+
+const { LOG_CONFIGS, NODE_ENV } = serverConfigs;
 
 // File Path Constants
-const __dirname = fileURLToPath(import.meta.dirname);
+const __dirname = import.meta.dirname;
 const __rootPath = path.resolve(__dirname, '../../..');
 const __logPath = path.join(__rootPath, 'logs/v1');
 
@@ -57,4 +57,9 @@ export const migration = pino(
 export const audit = pino(
   pinoConfig,
   pino.destination({ dest: path.join(__logPath, 'auditInfo.log') })
+);
+
+export const expressWorker = pino(
+  pinoConfig,
+  pino.destination({ dest: path.join(__logPath, 'expressWorkerInfo.log') })
 );

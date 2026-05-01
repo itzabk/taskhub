@@ -4,7 +4,7 @@ import fs from 'node:fs';
 
 import Redis from 'ioredis';
 
-import Logger from '../helpers/pino/index.js';
+import { logger } from '../helpers/pino/index.js';
 
 import { serverConfigs } from '../configs/serverConfigs.js';
 
@@ -23,8 +23,6 @@ const {
   REDIS_CERT = null,
   REDIS_KEY = null,
 } = REDIS_CONFIGS;
-
-const logger = new Logger();
 
 const redisConnections = new Set();
 

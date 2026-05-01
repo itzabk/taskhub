@@ -6,7 +6,7 @@ import mongoose from 'mongoose';
 
 import { serverConfigs } from '../configs/serverConfigs.js';
 
-import Logger from '../helpers/pino/index.js';
+import { logger } from '../helpers/pino/index.js';
 
 const { DB_CONFIGS } = serverConfigs;
 
@@ -27,9 +27,6 @@ let isShuttingDown = false;
 // Global mongoose settings
 mongoose.set('bufferCommands', false);
 mongoose.set('strictQuery', true);
-
-// Create logger instance
-const logger = new Logger();
 
 // Add mongoose configs
 const mongooseConfigs = {
