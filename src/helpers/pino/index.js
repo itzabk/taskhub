@@ -1,4 +1,4 @@
-import * as logger from './pino.js';
+import * as pinoLogger from './pino.js';
 
 // Payload Structure
 // const payload = {
@@ -21,7 +21,7 @@ class Logger {
       }
     });
 
-    if (!logger[file]) {
+    if (!pinoLogger[file]) {
       throw new Error(`Logger instance "${file}" not found in pino.js exports`);
     }
 
@@ -47,7 +47,7 @@ class Logger {
       ...(errorObj ? { err: errorObj } : {}),
     };
 
-    return logger[file][level](logData, finalMsg);
+    return pinoLogger[file][level](logData, finalMsg);
   }
 
   // Pass arguments through to the log method
