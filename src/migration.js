@@ -6,6 +6,8 @@ import { db } from './singletons/mongoDb.js';
 
 import { logger } from './helpers/pino/index.js';
 
+process.send({ action: 'ready' });
+
 async function runMigrations() {
   try {
     logger.trace(

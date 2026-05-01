@@ -8,6 +8,8 @@ import { asClass, asValue, createContainer, InjectionMode, Lifetime } from 'awil
 
 import { logger } from '../helpers/pino/index.js';
 
+import { redisPublisher } from '../events/redisPublisher.js';
+
 const awilixOpts = {
   formatName: (name, descriptor) => {
     const cleanPath = path.normalize(descriptor.path);
@@ -44,6 +46,7 @@ async function initAwilixContainer() {
       mongooseConnection: asValue(db),
       redisConnection: asValue(defaultRedisClient),
       logger: asValue(logger),
+      redisPublisher: asValue(redisPublisher),
     });
 
     await container.loadModules(['../services/*/index.js', '../models/*/index.js'], awilixOpts);

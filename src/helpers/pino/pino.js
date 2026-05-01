@@ -63,3 +63,8 @@ export const expressWorker = pino(
   pinoConfig,
   pino.destination({ dest: path.join(__logPath, 'expressWorkerInfo.log') })
 );
+
+export const redisPubSub = pino(
+  pinoConfig,
+  pino.destination({ dest: path.join(__logPath, 'redisPubSubInfo.log') })
+);
