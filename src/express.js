@@ -22,6 +22,8 @@ import { shutdownOrchestrator } from './shutdownOrchestrator.js';
 
 import { serverConfigs } from './configs/serverConfigs.js';
 
+import passport from 'passport';
+
 import { logger } from './helpers/pino/index.js';
 
 const {
@@ -72,6 +74,8 @@ export function createExpressApp() {
       genReqId: req => req.id,
       customProps: () => ({
         pid: process.pid,
+        pgid: process.getgid(),
+        ppid: process.ppid,
       }),
       customLogLevel(req, res, error) {
         if (error || res.statusCode >= 500) return 'error';
@@ -112,6 +116,7 @@ export function createExpressApp() {
         'Authorization',
         'Api-Key',
         'X-Request-Id',
+        'X-Csrf-Token',
       ],
     })
   );
@@ -131,7 +136,9 @@ export function createExpressApp() {
 
   app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 
-  // app.use(cookieParser(COOKIE_SECRET));
+  app.use(cookieParser(COOKIE_SECRET));
+
+  app.use(passport.initialize());
 
   app.get('/health', (req, res) => {
     res.status(200).json({

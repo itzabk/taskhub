@@ -33,4 +33,23 @@ export const serverConfigs = {
 
   EXPRESS_WORKERS: Number(process.env.EXPRESS_WORKERS || 2),
   ALLOWED_EXTERNAL_ORIGINS: process.env.ALLOWED_EXTERNAL_ORIGINS,
+  COOKIE_SECRET: process.env.COOKIE_SECRET,
+
+  GOOGLE: {
+    AUTH_KEY: process.env.GOOGLE_AUTH_KEY,
+    AUTH_REDIRECT_URI: process.env.GOOGLE_AUTH_REDIRECT_URI,
+    AUTH_CLIENT_SECRET: process.env.GOOGLE_AUTH_CLIENT_SECRET,
+  },
+
+  LINKEDIN: {
+    AUTH_KEY: process.env.LINKEDIN_AUTH_KEY,
+    AUTH_REDIRECT_URI: process.env.LINKEDIN_AUTH_REDIRECT_URI,
+    AUTH_CLIENT_SECRET: process.env.LINKEDIN_CLIENT_SECRET,
+  },
+
+  JWT: {
+    PRIVATE_KEY_PATH: process.env.JWT_PRIVATE_KEY_PATH,
+    PUBLIC_KEY_PATH: process.env.JWT_PUBLIC_KEY_PATH,
+    ALGORITHM: process.env.JWT_ALGORITHM,
+  },
 };
