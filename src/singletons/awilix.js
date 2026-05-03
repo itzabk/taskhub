@@ -6,7 +6,7 @@ import { defaultRedisClient } from './redis';
 
 import { asClass, asValue, createContainer, InjectionMode, Lifetime } from 'awilix';
 
-import { logger } from '../helpers/pino/index.js';
+import { logger } from '../helpers/index.js';
 
 import { redisPublisher } from '../events/redisPublisher.js';
 

@@ -1,5 +1,2 @@
-import { acquireMigrationLockLua } from './luaScripts/acquireMigrationLock.js';
-
-import { releaseMigrationLockLua } from './luaScripts/releaseMigrationLock.js';
-
-export { acquireMigrationLockLua, releaseMigrationLockLua };
+export { acquireMigrationLockLua } from './luaScripts/acquireMigrationLock.js';
+export { releaseMigrationLockLua } from './luaScripts/releaseMigrationLock.js';

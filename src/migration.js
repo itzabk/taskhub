@@ -4,9 +4,9 @@ import migrateConfig from './configs/migrate-mongo-config.js';
 
 import { db } from './singletons/mongoDb.js';
 
-import { logger } from './helpers/pino/index.js';
+import { logger } from './helpers/index.js';
 
-import { shutdownOrchestrator } from './shutdownOrchestrator.js';
+import { shutdownOrchestrator } from './orchestrators/index.js';
 
 if (process.send) {
   process.send({ action: 'ready' });
@@ -15,8 +15,8 @@ if (process.send) {
 const PLATFORM = process.platform;
 
 async function runMigrations() {
+  const start = process.hrtime.bigint();
   try {
-    const start = process.hrtime.bigint();
     logger.trace(
       {
         file: 'migration',

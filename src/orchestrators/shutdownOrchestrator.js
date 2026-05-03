@@ -1,14 +1,14 @@
-import Cluster from 'node:cluster';
+import { dbShutdown } from '../singletons/mongoDb.js';
 
-import { dbShutdown } from './singletons/mongoDb.js';
+import { redisShutdown } from '../singletons/redis.js';
 
-import { redisShutdown } from './singletons/redis.js';
+import { getChildProcesses, logger } from '../helpers/index.js';
 
-import { getChildProcesses, logger } from './helpers/index.js';
-
-const role = Cluster.isPrimary ? 'Primary' : 'Worker';
+import { LOGGER_FILES } from '../constants/index.js';
 
 let isShuttingDown = false;
+
+const { MAIN_THREAD } = LOGGER_FILES;
 
 export async function shutdownOrchestrator(code = 0) {
   if (isShuttingDown) {
@@ -18,12 +18,11 @@ export async function shutdownOrchestrator(code = 0) {
   const start = process.hrtime.bigint();
   logger.trace(
     {
-      file: 'mainThread',
+      file: MAIN_THREAD,
       service: 'index',
       method: 'shutdownOrchestrator',
-      meta: { pid: process.pis },
     },
-    `[${role}]Application shutdown initiated, beginning graceful cleanup (PID: ${process.pid})`
+    'Application shutdown initiated, beginning graceful cleanup'
   );
 
   const forceKill = setTimeout(() => {
@@ -50,12 +49,12 @@ export async function shutdownOrchestrator(code = 0) {
   } catch (err) {
     logger.error(
       {
-        file: 'mainThread',
+        file: MAIN_THREAD,
         service: 'index',
         method: 'shutdownOrchestrator',
-        meta: { err, pid: process.pid },
+        meta: { err },
       },
-      `[${role}] Error occurred during graceful shutdown, forcing exit (PID: ${process.pid})`
+      'Error occurred during graceful shutdown, forcing exit'
     );
     code = 1;
   } finally {
@@ -63,13 +62,12 @@ export async function shutdownOrchestrator(code = 0) {
     const durationMS = Number((end - start) / 1_000_000n);
     logger.info(
       {
-        file: 'mainThread',
+        file: MAIN_THREAD,
         service: 'index',
         method: 'shutdownOrchestrator',
         durationMS,
-        meta: { pid: process.pid },
       },
-      `[${role}] Application shutdown completed successfully in ${durationMS}ms, exiting with code ${code} (PID: ${process.pid})`
+      `Application shutdown completed successfully in ${durationMS}ms, exiting with code ${code}`
     );
     clearTimeout(forceKill);
     process.exit(code);

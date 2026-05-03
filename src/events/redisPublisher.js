@@ -1,13 +1,13 @@
-import CONSTANTS from '../constants/index.js';
+import { REDIS_TOPICS } from '../constants/index.js';
 
 import { defaultRedisClient } from '../singletons/redis.js';
 
-import { logger } from '../helpers/pino/index.js';
+import { logger } from '../helpers/index.js';
 
 export class RedisPublisher {
   constructor(redisInstance) {
     this.redisInstance = redisInstance;
-    this.allowedChannels = new Set(Object.values(CONSTANTS.REDIS_TOPICS));
+    this.allowedChannels = new Set(Object.values(REDIS_TOPICS));
   }
 
   assert(channel, message) {

@@ -16,15 +16,15 @@ import qs from 'qs';
 
 import { router } from './api/routes.js';
 
-import { apiResponse } from './helpers/pino/pino.js';
+import { apiResponse, logger } from './helpers/index.js';
 
-import { shutdownOrchestrator } from './shutdownOrchestrator.js';
+import { shutdownOrchestrator } from './orchestrators/index.js';
 
 import { serverConfigs } from './configs/serverConfigs.js';
 
 import passport from 'passport';
 
-import { logger } from './helpers/pino/index.js';
+import cookieParser from 'cookie-parser';
 
 const {
   NODE_PORT = 3000,
@@ -45,7 +45,7 @@ function getAllowedOrigins() {
   ].filter(Boolean);
 }
 
-export function createExpressApp() {
+function createExpressApp() {
   const app = express();
 
   app.disable('x-powered-by');
@@ -173,7 +173,7 @@ export function createExpressApp() {
   return app;
 }
 
-export function startServer() {
+function startServer() {
   const app = createExpressApp();
 
   const server = app.listen(Number(NODE_PORT), () => {
@@ -227,3 +227,5 @@ process.on('unhandledRejection', async err => {
   );
   await shutdownOrchestrator(1);
 });
+
+startServer();

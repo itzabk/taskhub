@@ -2,18 +2,24 @@ import Cluster from 'node:cluster';
 
 import os from 'node:os';
 
+import path from 'node:path';
+
 import { serverConfigs } from './configs/serverConfigs.js';
 
-import { logger } from './helpers/pino/index.js';
-
-import { startServer } from './express.js';
+import { logger } from './helpers/index.js';
 
 const noOfCores = os.availableParallelism();
 
 const { EXPRESS_WORKERS } = serverConfigs;
 
+const __dirname = import.meta.dirname;
+
 if (Cluster.isPrimary) {
   const workerCount = EXPRESS_WORKERS || noOfCores;
+
+  Cluster.setupPrimary({
+    exec: path.resolve(__dirname, 'express.js'),
+  });
 
   Cluster.on('fork', worker => {
     logger.info(
@@ -57,7 +63,7 @@ if (Cluster.isPrimary) {
           parentPid: process.pid,
           workerId: worker.id,
           workerPid: worker.process.pid,
-          address,
+          address: address,
         },
       },
       'Cluster worker process listening on network'
@@ -87,6 +93,4 @@ if (Cluster.isPrimary) {
   for (let i = 0; i < workerCount; i++) {
     Cluster.fork();
   }
-} else {
-  await startServer();
 }
