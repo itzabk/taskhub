@@ -4,15 +4,15 @@ import path from 'node:path';
 
 import mongoose from 'mongoose';
 
-import Cluster from 'node:cluster';
-
 import { serverConfigs } from '../configs/serverConfigs.js';
 
 import { logger } from '../helpers/index.js';
 
+import { LOGGER_FILES } from '../constants/index.js';
+
 import { addTimestampsPlugin, globalToJSONPlugin } from '../helpers/index.js';
 
-const role = Cluster.isPrimary ? 'Primary' : 'Worker';
+const { MAIN_THREAD } = LOGGER_FILES;
 
 const { DB_CONFIGS } = serverConfigs;
 
@@ -63,12 +63,12 @@ if (IS_DATABASE_CONNECTION_ENCRYPTED) {
   } catch (err) {
     logger.error(
       {
-        file: 'mainThread',
+        file: MAIN_THREAD,
         service: 'mongoDb',
         method: 'initDb',
         meta: { err, pid: process.pid },
       },
-      `[${role}] Failed to write database certificate file (PID: ${process.pid})`
+      'Failed to write database certificate file'
     );
     throw err;
   }
@@ -79,24 +79,24 @@ function attachListeners(conn, logger) {
     const { name, host, port } = conn;
     logger.info(
       {
-        file: 'mainThread',
+        file: MAIN_THREAD,
         service: 'mongoDb',
         method: 'dbConnection',
         meta: { pid: process.pid },
       },
-      `[${role}] Connected to MongoDB server at ${host}:${port}/${name} successfully (PID: ${process.pid})`
+      'Connected to MongoDB'
     );
   });
 
   conn.on('disconnected', () => {
     logger.warn(
       {
-        file: 'mainThread',
+        file: MAIN_THREAD,
         service: 'mongoDb',
         method: 'dbDisconnection',
         meta: { pid: process.pid },
       },
-      `[${role}] Disconnected from MongoDB server (PID: ${process.pid})`
+      'Disconnected from MongoDB'
     );
   });
 
@@ -104,19 +104,19 @@ function attachListeners(conn, logger) {
     const { name, host, port } = mongoose.connection;
     logger.info(
       {
-        file: 'mainThread',
+        file: MAIN_THREAD,
         service: 'mongoDb',
         method: 'dbReconnection',
         meta: { pid: process.pid },
       },
-      `[${role}] Reconnected to MongoDB server at ${host}:${port}/${name} successfully (PID: ${process.pid})`
+      'Reconnected to MongoDB'
     );
   });
 
   conn.on('error', err => {
     logger.error(
       {
-        file: 'mainThread',
+        file: MAIN_THREAD,
         service: 'mongoDb',
         method: 'dbConnectionError',
         meta: {
@@ -124,7 +124,7 @@ function attachListeners(conn, logger) {
           pid: process.pid,
         },
       },
-      `[${role}] Error occurred during database connection (PID: ${process.pid})`
+      'MongoDB connection error'
     );
     throw err;
   });
@@ -137,12 +137,12 @@ export async function dbShutdown() {
   const forceKill = setTimeout(async () => {
     logger.warn(
       {
-        thread: 'mainThread',
+        thread: MAIN_THREAD,
         service: 'mongoDb',
         method: 'dbShutdown',
         meta: { pid: process.pid },
       },
-      `[${role}] MongoDB connections forcibly terminated due to shutdown timeout (PID: ${process.pid})`
+      'MongoDB connections forcibly terminated due to shutdown timeout'
     );
     // Specifying true will force kill mongo connection
     await mongoose.connection.close(true);
@@ -152,18 +152,23 @@ export async function dbShutdown() {
   try {
     await mongoose.connection.close();
     logger.info(
-      { file: 'mainThread', service: 'mongoDb', method: 'dbShutdown', meta: { pid: process.pid } },
-      `[${role}] Database connection closed successfully (PID: ${process.pid})`
+      {
+        file: MAIN_THREAD,
+        service: 'mongoDb',
+        method: 'dbShutdown',
+        meta: { pid: process.pid },
+      },
+      'Database connection closed'
     );
   } catch (err) {
     logger.error(
       {
-        file: 'mainThread',
+        file: MAIN_THREAD,
         service: 'mongoDb',
         method: 'dbShutdown',
         meta: { err, pid: process.pid },
       },
-      `[${role}] Error occurred during database shutdown (PID: ${process.pid})`
+      'Error during database shutdown'
     );
     throw err;
   } finally {
@@ -188,7 +193,7 @@ async function initDb() {
   } catch (err) {
     logger.error(
       {
-        file: 'mainThread',
+        file: MAIN_THREAD,
         service: 'mongoDb',
         method: 'initDb',
         meta: {
@@ -196,7 +201,7 @@ async function initDb() {
           pid: process.pid,
         },
       },
-      `[${role}] Error occurred during database connection initialization (PID: ${process.pid})`
+      'Error during database initialization'
     );
     throw err;
   }

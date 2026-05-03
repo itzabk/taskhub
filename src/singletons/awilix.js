@@ -6,7 +6,11 @@ import { defaultRedisClient } from './redis';
 
 import { asClass, asValue, createContainer, InjectionMode, Lifetime } from 'awilix';
 
+import { LOGGER_FILES } from '../constants/index.js';
+
 import { logger } from '../helpers/index.js';
+
+const { MAIN_THREAD } = LOGGER_FILES;
 
 import { redisPublisher } from '../events/redisPublisher.js';
 
@@ -30,9 +34,10 @@ const awilixOpts = {
 async function initAwilixContainer() {
   logger.trace(
     {
-      file: 'mainThread',
+      file: MAIN_THREAD,
       service: 'awilix',
       method: 'initAwilixContainer',
+      meta: { pid: process.pid },
     },
     'Initializing dependency injection container'
   );
@@ -53,9 +58,10 @@ async function initAwilixContainer() {
 
     logger.info(
       {
-        file: 'mainThread',
+        file: MAIN_THREAD,
         service: 'awilix',
         method: 'initAwilixContainer',
+        meta: { pid: process.pid },
       },
       'Dependency injection container initialized successfully'
     );
@@ -64,10 +70,10 @@ async function initAwilixContainer() {
   } catch (err) {
     logger.error(
       {
-        file: 'mainThread',
+        file: MAIN_THREAD,
         service: 'awilix',
         method: 'initAwilixContainer',
-        meta: { err },
+        meta: { err, pid: process.pid },
       },
       'Failed to initialize dependency injection container'
     );

@@ -2,11 +2,13 @@ import path from 'node:path';
 
 import fs from 'node:fs';
 
-import Cluster from 'node:cluster';
-
 import Redis from 'ioredis';
 
+import { LOGGER_FILES } from '../constants/index.js';
+
 import { logger } from '../helpers/index.js';
+
+const { MAIN_THREAD } = LOGGER_FILES;
 
 import { serverConfigs } from '../configs/serverConfigs.js';
 
@@ -15,8 +17,6 @@ const __dirname = import.meta.dirname;
 const __certpath = path.resolve(__dirname, '../configs');
 
 const { REDIS_CONFIGS, NODE_ENV } = serverConfigs;
-
-const role = Cluster.isPrimary ? 'Primary' : 'Worker';
 
 const {
   REDIS_URL = '',
@@ -79,31 +79,31 @@ function attachListeners(client) {
   client.on('connect', () => {
     logger.info(
       {
-        file: 'mainThread',
+        file: MAIN_THREAD,
         service: 'redis',
         method: 'attachListeners',
-        meta: { ...connectionInfo, status: client.status, pid: process.pid, role },
+        meta: { ...connectionInfo, status: client.status, pid: process.pid },
       },
-      `[${role}] Redis client ${connectionInfo.host} ${connectionInfo.port}  connected successfully (PID: ${process.pid})`
+      'Redis client connected'
     );
   });
 
   client.on('ready', () => {
     logger.info(
       {
-        file: 'mainThread',
+        file: MAIN_THREAD,
         service: 'redis',
         method: 'attachListeners',
-        meta: { ...connectionInfo, clientID: client.id, pid: process.pid, role },
+        meta: { ...connectionInfo, clientID: client.id, pid: process.pid },
       },
-      `[${role}] Redis client ${connectionInfo.host} ${connectionInfo.port}  authenticated and ready for operations (PID: ${process.pid})`
+      'Redis client ready'
     );
   });
 
   client.on('reconnecting', () => {
     logger.warn(
       {
-        file: 'mainThread',
+        file: MAIN_THREAD,
         service: 'redis',
         method: 'attachListeners',
         meta: {
@@ -112,17 +112,16 @@ function attachListeners(client) {
           nextRetryDelay: client.condition?.retryDelay || 0,
           totalRetries: client.condition?.retries || 0,
           pid: process.pid,
-          role,
         },
       },
-      `[${role}] Redis client attempting to reconnect to server  (PID: ${process.pid})`
+      'Redis client reconnecting'
     );
   });
 
   client.on('error', err => {
     logger.error(
       {
-        file: 'mainThread',
+        file: MAIN_THREAD,
         service: 'redis',
         method: 'attachListeners',
         meta: {
@@ -131,10 +130,9 @@ function attachListeners(client) {
           status: client.status,
           retryAttempt: client.condition?.retries || 0,
           pid: process.pid,
-          role,
         },
       },
-      `[${role}] Error occurred during redis connection (PID: ${process.pid})`
+      'Redis connection error'
     );
     throw err;
   });
@@ -142,24 +140,24 @@ function attachListeners(client) {
   client.on('close', () => {
     logger.warn(
       {
-        file: 'mainThread',
+        file: MAIN_THREAD,
         service: 'redis',
         method: 'attachListeners',
-        meta: { ...connectionInfo, status: client.status, pid: process.pid, role },
+        meta: { ...connectionInfo, status: client.status, pid: process.pid },
       },
-      `[${role}] Redis client connection closed  (PID: ${process.pid})`
+      'Redis client closed'
     );
   });
 
   client.on('end', () => {
     logger.info(
       {
-        file: 'mainThread',
+        file: MAIN_THREAD,
         service: 'redis',
         method: 'attachListeners',
-        meta: { ...connectionInfo, status: client.status, pid: process.pid, role },
+        meta: { ...connectionInfo, status: client.status, pid: process.pid },
       },
-      `[${role}] Redis client connection terminated completely  (PID: ${process.pid})`
+      'Redis client terminated'
     );
   });
 }
@@ -181,12 +179,12 @@ export async function createNewRedisClient(processName = 'default', overrides = 
   } catch (err) {
     logger.fatal(
       {
-        file: 'mainThread',
+        file: MAIN_THREAD,
         service: 'redis',
         method: 'createNewClient',
-        meta: { err, pid: process.pid, role },
+        meta: { err, pid: process.pid },
       },
-      `[${role}] Failed to create redis client connection (PID: ${process.pid})`
+      'Failed to create redis client'
     );
     throw err;
   }
@@ -207,12 +205,12 @@ export async function redisShutdown() {
     await Promise.allSettled(killPromises);
     logger.warn(
       {
-        thread: 'mainThread',
+        thread: MAIN_THREAD,
         service: 'redis',
         method: 'redisShutdown',
-        meta: { pid: process.pid, role },
+        meta: { pid: process.pid },
       },
-      `[${role}] Redis connections forcibly terminated due to shutdown timeout (PID: ${process.pid})`
+      'Redis connections forcibly terminated due to shutdown timeout'
     );
   }, 5000);
   forceKill.unref();
@@ -222,18 +220,23 @@ export async function redisShutdown() {
 
     await Promise.allSettled(closePromises);
     logger.info(
-      { file: 'mainThread', service: 'redis', method: 'redisShutdown' },
-      `[${role}] All Redis connections closed successfully (PID: ${process.pid})`
+      {
+        file: MAIN_THREAD,
+        service: 'redis',
+        method: 'redisShutdown',
+        meta: { pid: process.pid },
+      },
+      'All Redis connections closed'
     );
   } catch (err) {
     logger.error(
       {
-        file: 'mainThread',
+        file: MAIN_THREAD,
         service: 'redis',
         method: 'redisShutdown',
-        meta: { err, pid: process.pid, role },
+        meta: { err, pid: process.pid },
       },
-      `[${role}] Error occurred during redis shutdown process (PID: ${process.pid})`
+      'Error during redis shutdown'
     );
     throw err;
   } finally {
@@ -257,12 +260,12 @@ export async function duplicateRedisClient(originalClient, processName) {
   } catch (err) {
     logger.fatal(
       {
-        file: 'mainThread',
+        file: MAIN_THREAD,
         service: 'redis',
         method: 'duplicateRedisClient',
-        meta: { err, pid: process.pid, role },
+        meta: { err, pid: process.pid },
       },
-      `[${role}] Failed to duplicate redis client connection  (PID: ${process.pid})`
+      'Failed to duplicate redis client'
     );
     throw err;
   }

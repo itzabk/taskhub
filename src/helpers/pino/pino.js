@@ -1,5 +1,7 @@
 import path from 'node:path';
 
+import Cluster from 'node:cluster';
+
 import fs from 'node:fs';
 
 import pino from 'pino';
@@ -21,6 +23,12 @@ fs.mkdirSync(__logPath, { recursive: true });
 
 // Pino Configurations
 const pinoConfig = {
+  base: {
+    pid: process.pid,
+    workerId: Cluster.worker ? cluster.worker.id : undefined,
+    role: Cluster.isPrimary ? 'Primary' : 'Worker',
+    pgid: process.getgid(),
+  },
   timestamp: pino.stdTimeFunctions.isoTime,
   level: IS_PROD ? LOG_CONFIGS.LOG_LEVEL || 'info' : LOG_CONFIGS.LOG_LEVEL || 'trace',
   // use pino pretty in non production modes for better formatting

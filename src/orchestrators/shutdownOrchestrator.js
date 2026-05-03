@@ -21,6 +21,7 @@ export async function shutdownOrchestrator(code = 0) {
       file: MAIN_THREAD,
       service: 'index',
       method: 'shutdownOrchestrator',
+      meta: { pid: process.pid },
     },
     'Application shutdown initiated, beginning graceful cleanup'
   );
@@ -52,7 +53,7 @@ export async function shutdownOrchestrator(code = 0) {
         file: MAIN_THREAD,
         service: 'index',
         method: 'shutdownOrchestrator',
-        meta: { err },
+        meta: { err, pid: process.pid },
       },
       'Error occurred during graceful shutdown, forcing exit'
     );
@@ -66,8 +67,9 @@ export async function shutdownOrchestrator(code = 0) {
         service: 'index',
         method: 'shutdownOrchestrator',
         durationMS,
+        meta: { pid: process.pid, exitCode: code },
       },
-      `Application shutdown completed successfully in ${durationMS}ms, exiting with code ${code}`
+      'Application shutdown completed'
     );
     clearTimeout(forceKill);
     process.exit(code);

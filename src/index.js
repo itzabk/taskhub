@@ -4,7 +4,11 @@ import path from 'node:path';
 
 import { logger } from './helpers/index.js';
 
+import { LOGGER_FILES } from './constants/index.js';
+
 import { initMigrationAndStartApp, shutdownOrchestrator } from './orchestrators/index.js';
+
+const { MAIN_THREAD } = LOGGER_FILES;
 
 const __dirname = import.meta.dirname;
 const __rootDir = path.resolve(__dirname, '..');
@@ -37,10 +41,10 @@ if (IS_WINDOWS) {
 process.on('uncaughtException', async err => {
   logger.fatal(
     {
-      file: 'mainThread',
+      file: MAIN_THREAD,
       service: 'index',
       method: 'uncaughtException',
-      meta: { err },
+      meta: { err, pid: process.pid },
     },
     'Uncaught exception encountered in main process, initiating graceful shutdown'
   );
@@ -51,10 +55,10 @@ process.on('uncaughtException', async err => {
 process.on('unhandledRejection', async err => {
   logger.fatal(
     {
-      file: 'mainThread',
+      file: MAIN_THREAD,
       service: 'index',
       method: 'unhandledRejection',
-      meta: { err },
+      meta: { err, pid: process.pid },
     },
     'Unhandled promise rejection in main process, initiating graceful shutdown'
   );
@@ -71,7 +75,12 @@ process.on('SIGQUIT', async () => {
     process.report.writeReport(reportPath);
 
     logger.info(
-      { file: 'mainThread', service: 'index', method: 'SIGQUIT', meta: { reportPath } },
+      {
+        file: MAIN_THREAD,
+        service: 'index',
+        method: 'SIGQUIT',
+        meta: { reportPath, pid: process.pid },
+      },
       'Diagnostic report generated successfully on SIGQUIT signal'
     );
 
@@ -79,10 +88,10 @@ process.on('SIGQUIT', async () => {
   } catch (err) {
     logger.fatal(
       {
-        file: 'mainThread',
+        file: MAIN_THREAD,
         service: 'index',
         method: 'SIGQUIT',
-        meta: { err },
+        meta: { err, pid: process.pid },
       },
       'Failed to generate diagnostic report on SIGQUIT signal'
     );
