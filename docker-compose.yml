@@ -163,6 +163,22 @@ services:
     environment:
       NODE_ENV: production
       APP_NODE: app2
+      DEPLOYMENT_ENVIRONMENT: development
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
+
+      DB_URL: mongodb://mongo-master:27017,mongo-replica-1:27017,mongo-replica-2:27017/taskhub?replicaSet=rs0
+      DB_USERNAME: ''
+      DB_PASSWORD: ''
+
+      REDIS_URL: redis://default:${REDIS_PASSWORD:-redispassword}@redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redispassword}
+
+      EXPRESS_WORKERS: ${EXPRESS_WORKERS:-2}
+
+      OTEL_SERVICE_NAME: taskhub-api
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://host.docker.internal:4318/v1/traces
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: http://host.docker.internal:4318/v1/metrics
+      OTEL_RESOURCE_ATTRIBUTES: service.name=taskhub-api,service.version=1.0.0,deployment.environment.name=development
     ports:
       - '3001:3000'
 
