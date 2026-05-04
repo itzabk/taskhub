@@ -1,0 +1,37 @@
+receivers:
+  filelog/taskhub:
+    include:
+      - /logs/*/v1/*.log
+    start_at: beginning
+    include_file_path: true
+    operators:
+      - type: json_parser
+        parse_from: body
+        parse_to: attributes
+      - type: move
+        from: attributes.msg
+        to: body
+        if: attributes.msg != nil
+
+processors:
+  resource:
+    attributes:
+      - key: service.name
+        value: taskhub-api
+        action: upsert
+      - key: deployment.environment.name
+        value: development
+        action: upsert
+
+  batch:
+
+exporters:
+  otlphttp/signoz:
+    endpoint: http://host.docker.internal:4318
+
+service:
+  pipelines:
+    logs:
+      receivers: [filelog/taskhub]
+      processors: [resource, batch]
+      exporters: [otlphttp/signoz]

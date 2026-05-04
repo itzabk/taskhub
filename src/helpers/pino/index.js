@@ -1,5 +1,7 @@
 import * as pinoLogger from './pino.js';
 
+import { loggerStorage } from './loggerContext.js';
+
 // Payload Structure
 // const payload = {
 //     file:"file",
@@ -46,6 +48,12 @@ class Logger {
       ...otherMeta,
       ...(errorObj ? { err: errorObj } : {}),
     };
+
+    const requestScopedLogger = loggerStorage.getStore();
+
+    if (requestScopedLogger) {
+      return requestScopedLogger[level]({ ...finalPayload }, finalMsg);
+    }
 
     return pinoLogger[file][level](logData, finalMsg);
   }

@@ -31,10 +31,13 @@ const __rootDir = path.resolve(__dirname, '../..');
 
 const { NODE_ENV } = serverConfigs;
 
-const migrationPath =
-  NODE_ENV === 'production'
-    ? path.join(__rootDir, 'build/migration.js')
-    : path.join(__rootDir, 'src/migration.js');
+// TODO : Check this migration path w.r.t docker build
+// const migrationPath =
+//   NODE_ENV === 'production'
+//     ? path.join(__rootDir, 'build/migration.js')
+//     : path.join(__rootDir, 'src/migration.js');
+
+const migrationPath = path.join(__rootDir, 'src/migration.js');
 
 let appStarted = false;
 

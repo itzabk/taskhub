@@ -1,5 +1,6 @@
 // Pino Logger
 export { logger } from './pino/index.js';
+export { loggerStorage } from './pino/loggerContext.js';
 export {
   apiResponse,
   audit,

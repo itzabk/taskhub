@@ -1,91 +1,63 @@
 version: '3.8'
-
 services:
-  # MongoDB Primary (Master)
   mongo-master:
-    image: mongo:7.0-alpine
+    image: mongo:7.0-jammy
     container_name: taskhub-mongo-master
     ports:
       - '27017:27017'
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: rootpassword
     volumes:
       - mongo-master-data:/data/db
-    command: >
-      mongod
-      --replSet rs0
-      --bind_ip_all
-      --auth
-    networks:
-      - taskhub-network
+    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
+    networks: [taskhub-network]
     healthcheck:
-      test: echo "db.adminCommand('ping')" | mongosh -u root -p rootpassword --authenticationDatabase admin
+      test: mongosh --quiet --host localhost:27017 --eval "db.adminCommand('ping').ok"
       interval: 5s
-      timeout: 2s
-      retries: 10
-      start_period: 40s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
 
-  # MongoDB Replica 1 (Read-Only)
   mongo-replica-1:
-    image: mongo:7.0-alpine
+    image: mongo:7.0-jammy
     container_name: taskhub-mongo-replica-1
     ports:
       - '27018:27017'
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: rootpassword
     volumes:
       - mongo-replica-1-data:/data/db
-    command: >
-      mongod
-      --replSet rs0
-      --bind_ip_all
-      --auth
-    networks:
-      - taskhub-network
+    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
+    networks: [taskhub-network]
     depends_on:
       mongo-master:
         condition: service_healthy
     healthcheck:
-      test: echo "db.adminCommand('ping')" | mongosh -u root -p rootpassword --authenticationDatabase admin
+      test: mongosh --quiet --host localhost:27017 --eval "db.adminCommand('ping').ok"
       interval: 5s
-      timeout: 2s
-      retries: 10
+      timeout: 5s
+      retries: 20
+      start_period: 30s
 
-  # MongoDB Replica 2 (Read-Only)
   mongo-replica-2:
-    image: mongo:7.0-alpine
+    image: mongo:7.0-jammy
     container_name: taskhub-mongo-replica-2
     ports:
       - '27019:27017'
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: rootpassword
     volumes:
       - mongo-replica-2-data:/data/db
-    command: >
-      mongod
-      --replSet rs0
-      --bind_ip_all
-      --auth
-    networks:
-      - taskhub-network
+    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
+    networks: [taskhub-network]
     depends_on:
       mongo-master:
         condition: service_healthy
     healthcheck:
-      test: echo "db.adminCommand('ping')" | mongosh -u root -p rootpassword --authenticationDatabase admin
+      test: mongosh --quiet --host localhost:27017 --eval "db.adminCommand('ping').ok"
       interval: 5s
-      timeout: 2s
-      retries: 10
+      timeout: 5s
+      retries: 20
+      start_period: 30s
 
-  # Initialize MongoDB Replica Set
   mongo-init:
-    image: mongo:7.0-alpine
+    image: mongo:7.0-jammy
     container_name: taskhub-mongo-init
-    networks:
-      - taskhub-network
+    networks: [taskhub-network]
     depends_on:
       mongo-master:
         condition: service_healthy
@@ -94,163 +66,105 @@ services:
       mongo-replica-2:
         condition: service_healthy
     entrypoint: >
-      /bin/bash -c "
-      mongosh --host mongo-master:27017 -u root -p rootpassword --authenticationDatabase admin <<EOF
-      var cfg = rs.conf();
-      cfg.members = [
-        {_id: 0, host: 'mongo-master:27017', priority: 10},
-        {_id: 1, host: 'mongo-replica-1:27017', priority: 5},
-        {_id: 2, host: 'mongo-replica-2:27017', priority: 5}
-      ];
-      rs.reconfig(cfg, {force: true});
-      EOF
-      sleep 5;
+      bash -c '
+      mongosh --host mongo-master:27017 --eval "
+        try {
+          rs.status();
+          print(\"Replica set already initialized\");
+        } catch (e) {
+          rs.initiate({
+            _id: \"rs0\",
+            members: [
+              { _id: 0, host: \"mongo-master:27017\", priority: 10 },
+              { _id: 1, host: \"mongo-replica-1:27017\", priority: 5 },
+              { _id: 2, host: \"mongo-replica-2:27017\", priority: 5 }
+            ]
+          });
+        }
       "
-    profiles:
-      - init
+      '
+    restart: 'no'
 
-  # Redis
   redis:
-    image: redis:7-alpine
+    image: redis:7.4-alpine
     container_name: taskhub-redis
     ports:
       - '6379:6379'
     volumes:
       - redis-data:/data
-    command: redis-server --appendonly yes --requirepass redispassword
-    networks:
-      - taskhub-network
+    command:
+      ['redis-server', '--appendonly', 'yes', '--requirepass', '${REDIS_PASSWORD:-redispassword}']
+    networks: [taskhub-network]
     healthcheck:
-      test: redis-cli --raw incr ping
+      test: ['CMD-SHELL', 'redis-cli -a ${REDIS_PASSWORD:-redispassword} ping | grep PONG']
       interval: 5s
-      timeout: 2s
-      retries: 10
+      timeout: 5s
+      retries: 20
 
-  # MailCatcher
   mailcatcher:
     image: sj26/mailcatcher:latest
     container_name: taskhub-mailcatcher
     ports:
       - '1025:1025'
       - '1080:1080'
+    networks: [taskhub-network]
+
+  otel-taskhub-logs:
+    image: otel/opentelemetry-collector-contrib:0.116.1
+    container_name: taskhub-otel-taskhub-logs
+    command: ['--config=/etc/otelcol-contrib/config.yaml']
+    volumes:
+      - ./otel-taskhub-logs-config.yaml:/etc/otelcol-contrib/config.yaml:ro
+      - ./logs:/logs:ro
     networks:
       - taskhub-network
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:1080']
-      interval: 5s
-      timeout: 2s
-      retries: 10
+    restart: unless-stopped
 
-  # Node.js Application - Instance 1
-  taskhub-app-1:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  taskhub-app-1: &taskhub-app
+    build: .
     container_name: taskhub-app-1
     ports:
       - '3000:3000'
+    env_file:
+      - .env
     environment:
-      NODE_ENV: ${NODE_ENV}
-      LOG_LEVEL: ${LOG_LEVEL}
-      DB_URL: ${DB_URL}
-      DB_USERNAME: ${DB_USERNAME}
-      DB_PASSWORD: ${DB_PASSWORD}
-      REDIS_URL: ${REDIS_URL}
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-      EXPRESS_WORKERS: ${EXPRESS_WORKERS}
+      NODE_ENV: production
+      APP_NODE: app1
+      DEPLOYMENT_ENVIRONMENT: development
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
+
+      DB_URL: mongodb://mongo-master:27017,mongo-replica-1:27017,mongo-replica-2:27017/taskhub?replicaSet=rs0
+      DB_USERNAME: ''
+      DB_PASSWORD: ''
+
+      REDIS_URL: redis://default:${REDIS_PASSWORD:-redispassword}@redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redispassword}
+
+      EXPRESS_WORKERS: ${EXPRESS_WORKERS:-2}
+
+      OTEL_SERVICE_NAME: taskhub-api
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://host.docker.internal:4318/v1/traces
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: http://host.docker.internal:4318/v1/metrics
+      OTEL_RESOURCE_ATTRIBUTES: service.name=taskhub-api,service.version=1.0.0,deployment.environment.name=development
     volumes:
       - ./src:/usr/src/app/src
       - ./logs:/usr/src/app/logs
-    networks:
-      - taskhub-network
+    networks: [taskhub-network]
     depends_on:
-      mongo-master:
-        condition: service_healthy
+      mongo-init:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
-      mailcatcher:
-        condition: service_healthy
     restart: unless-stopped
-    healthcheck:
-      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3000/health']
-      interval: 10s
-      timeout: 3s
-      retries: 3
-      start_period: 30s
 
-  # Node.js Application - Instance 2
   taskhub-app-2:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    <<: *taskhub-app
     container_name: taskhub-app-2
+    environment:
+      NODE_ENV: production
+      APP_NODE: app2
     ports:
       - '3001:3000'
-    environment:
-      NODE_ENV: ${NODE_ENV}
-      LOG_LEVEL: ${LOG_LEVEL}
-      DB_URL: ${DB_URL}
-      DB_USERNAME: ${DB_USERNAME}
-      DB_PASSWORD: ${DB_PASSWORD}
-      REDIS_URL: ${REDIS_URL}
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-      EXPRESS_WORKERS: ${EXPRESS_WORKERS}
-    volumes:
-      - ./src:/usr/src/app/src
-      - ./logs:/usr/src/app/logs
-    networks:
-      - taskhub-network
-    depends_on:
-      mongo-master:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      mailcatcher:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3000/health']
-      interval: 10s
-      timeout: 3s
-      retries: 3
-      start_period: 30s
-
-  # Node.js Application - Instance 3
-  taskhub-app-3:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: taskhub-app-3
-    ports:
-      - '3002:3000'
-    environment:
-      NODE_ENV: ${NODE_ENV}
-      LOG_LEVEL: ${LOG_LEVEL}
-      DB_URL: ${DB_URL}
-      DB_USERNAME: ${DB_USERNAME}
-      DB_PASSWORD: ${DB_PASSWORD}
-      REDIS_URL: ${REDIS_URL}
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-      EXPRESS_WORKERS: ${EXPRESS_WORKERS}
-    volumes:
-      - ./src:/usr/src/app/src
-      - ./logs:/usr/src/app/logs
-    networks:
-      - taskhub-network
-    depends_on:
-      mongo-master:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      mailcatcher:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3000/health']
-      interval: 10s
-      timeout: 3s
-      retries: 3
-      start_period: 30s
 
 volumes:
   mongo-master-data:

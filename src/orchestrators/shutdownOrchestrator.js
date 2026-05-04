@@ -6,6 +6,8 @@ import { getChildProcesses, logger } from '../helpers/index.js';
 
 import { LOGGER_FILES } from '../constants/index.js';
 
+import { otelSdk } from '../../tracer.js';
+
 let isShuttingDown = false;
 
 const { MAIN_THREAD } = LOGGER_FILES;
@@ -47,6 +49,7 @@ export async function shutdownOrchestrator(code = 0) {
       await Promise.allSettled(childProcessPromises);
     }
     await Promise.allSettled([redisShutdown(), dbShutdown()]);
+    await otelSdk.shutdown();
   } catch (err) {
     logger.error(
       {

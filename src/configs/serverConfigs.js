@@ -1,16 +1,10 @@
-import dotenv from 'dotenv';
-
-import path from 'node:path';
-
-dotenv.config({
-  path: path.resolve(import.meta.dirname, '../../.env'),
-});
-
 export const serverConfigs = {
-  NODE_ENV: process.env.NODE_ENV,
+  NODE_ENV: process.env.NODE_ENV || 'development',
+  APP_NODE: process.env.APP_NODE || 'app1',
+  PORT: process.env.PORT || 3000,
 
   LOG_CONFIGS: {
-    LOG_LEVEL: process.env.LOG_LEVEL,
+    LOG_LEVEL: process.env.LOG_LEVEL || 'info',
   },
 
   DB_CONFIGS: {
@@ -51,5 +45,15 @@ export const serverConfigs = {
     PRIVATE_KEY_PATH: process.env.JWT_PRIVATE_KEY_PATH,
     PUBLIC_KEY_PATH: process.env.JWT_PUBLIC_KEY_PATH,
     ALGORITHM: process.env.JWT_ALGORITHM,
+  },
+
+  OTEL: {
+    EXPORTER_OTLP_ENDPOINT: 'http://127.0.0.1:4318',
+    EXPORTER_OTLP_TRACES_ENDPOINT: 'http://127.0.0.1:4318/v1/traces',
+    EXPORTER_OTLP_METRICS_ENDPOINT: 'http://127.0.0.1:4318/v1/metrics',
+    SERVICE_NAME: 'taskhub-api',
+    SERVICE_VERSION: '1.0.0',
+    DEPLOYMENT_ENVIRONMENT: 'development',
+    TRACE_SAMPLE_RATIO: 1,
   },
 };

@@ -16,7 +16,7 @@ import qs from 'qs';
 
 import { router } from './api/routes.js';
 
-import { apiResponse, logger } from './helpers/index.js';
+import { apiResponse, logger, loggerStorage } from './helpers/index.js';
 
 import { shutdownOrchestrator } from './orchestrators/index.js';
 
@@ -74,7 +74,6 @@ function createExpressApp() {
       genReqId: req => req.id,
       customProps: () => ({
         pid: process.pid,
-        pgid: process.getgid(),
         ppid: process.ppid,
       }),
       customLogLevel(req, res, error) {
@@ -82,8 +81,24 @@ function createExpressApp() {
         if (res.statusCode >= 400) return 'warn';
         return 'info';
       },
+      redact: {
+        paths: [
+          'req.headers.authorization',
+          'req.headers.cookie',
+          'req.body.password',
+          'req.body.confirmPassword',
+          'req.body.token',
+          'res.headers["set-cookie"]',
+        ],
+        censor: '[CONFIDENTIAL]',
+        remove: false,
+      },
     })
   );
+
+  app.use((req, res, next) => {
+    loggerStorage.run(req.log, () => next());
+  });
 
   app.use(
     helmet({
