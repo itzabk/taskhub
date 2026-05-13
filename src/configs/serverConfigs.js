@@ -30,21 +30,21 @@ export const serverConfigs = {
   COOKIE_SECRET: process.env.COOKIE_SECRET,
 
   GOOGLE: {
-    AUTH_KEY: process.env.GOOGLE_AUTH_KEY,
-    AUTH_REDIRECT_URI: process.env.GOOGLE_AUTH_REDIRECT_URI,
-    AUTH_CLIENT_SECRET: process.env.GOOGLE_AUTH_CLIENT_SECRET,
+    AUTH_KEY: process.env.GOOGLE_AUTH_KEY || '12344',
+    AUTH_REDIRECT_URI: process.env.GOOGLE_AUTH_REDIRECT_URI || 'http:localhost:3000',
+    AUTH_CLIENT_SECRET: process.env.GOOGLE_AUTH_CLIENT_SECRET || '12345',
   },
 
   LINKEDIN: {
-    AUTH_KEY: process.env.LINKEDIN_AUTH_KEY,
-    AUTH_REDIRECT_URI: process.env.LINKEDIN_AUTH_REDIRECT_URI,
-    AUTH_CLIENT_SECRET: process.env.LINKEDIN_CLIENT_SECRET,
+    AUTH_KEY: process.env.LINKEDIN_AUTH_KEY || '12344',
+    AUTH_REDIRECT_URI: process.env.LINKEDIN_AUTH_REDIRECT_URI || 'http:localhost:3000',
+    AUTH_CLIENT_SECRET: process.env.LINKEDIN_CLIENT_SECRET || '12345',
   },
 
   JWT: {
     PRIVATE_KEY_PATH: process.env.JWT_PRIVATE_KEY_PATH,
     PUBLIC_KEY_PATH: process.env.JWT_PUBLIC_KEY_PATH,
-    ALGORITHM: process.env.JWT_ALGORITHM,
+    ALGORITHM: process.env.JWT_ALGORITHM || 'RS256',
   },
 
   OTEL: {

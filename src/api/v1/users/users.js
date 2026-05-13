@@ -1,16 +1,27 @@
+import { BadRequestError } from '../../../helpers/errors/AppError.js';
+
 export default class UserController {
   constructor({ userService }) {
     this.userService = userService;
   }
 
+  /**
+   * Create a new user
+   * @param {Object} req - Express request object
+   * @param {Object} req.body - Request body with user data
+   * @param {string} req.body.name - User full name
+   * @param {string} req.body.email - User email (must be unique)
+   * @param {string} req.body.password - User password
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   * @returns {void} Sends 201 on success or error via next()
+   */
   async createUser(req, res, next) {
     try {
       const { name, email, password } = req.body;
 
       if (!name || !email || !password) {
-        const error = new Error('Name, email, and password are required');
-        error.statusCode = 400;
-        throw error;
+        throw new BadRequestError('Name, email, and password are required');
       }
 
       const user = await this.userService.createUser({ name, email, password });
@@ -24,6 +35,14 @@ export default class UserController {
     }
   }
 
+  /**
+   * Retrieve a specific user by ID
+   * @param {Object} req - Express request object
+   * @param {string} req.params.id - User ID
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   * @returns {void} Sends 200 with user data or error via next()
+   */
   async getUserById(req, res, next) {
     try {
       const { id } = req.params;
@@ -39,6 +58,15 @@ export default class UserController {
     }
   }
 
+  /**
+   * Update user profile information
+   * @param {Object} req - Express request object
+   * @param {string} req.params.id - User ID
+   * @param {Object} req.body - Fields to update (name, mobileNumber, details)
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   * @returns {void} Sends 200 with updated user or error via next()
+   */
   async updateUser(req, res, next) {
     try {
       const { id } = req.params;
@@ -63,6 +91,14 @@ export default class UserController {
     }
   }
 
+  /**
+   * Delete a user (soft delete)
+   * @param {Object} req - Express request object
+   * @param {string} req.params.id - User ID
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   * @returns {void} Sends 200 success or error via next()
+   */
   async deleteUser(req, res, next) {
     try {
       const { id } = req.params;
@@ -77,6 +113,15 @@ export default class UserController {
     }
   }
 
+  /**
+   * List all users with pagination
+   * @param {Object} req - Express request object
+   * @param {number} req.query.skip - Number of users to skip (default: 0)
+   * @param {number} req.query.limit - Number of users to return (default: 10)
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   * @returns {void} Sends 200 with paginated user list or error via next()
+   */
   async listUsers(req, res, next) {
     try {
       const { skip = 0, limit = 10 } = req.query;

@@ -1,7 +1,14 @@
 import jwt from 'jsonwebtoken';
+
 import fs from 'node:fs';
+
 import { serverConfigs } from '../../configs/serverConfigs.js';
-import { UnauthorizedError, ConflictError, NotFoundError } from '../../helpers/errors/AppError.js';
+
+import { ConflictError, NotFoundError, UnauthorizedError } from '../../helpers/errors/AppError.js';
+
+import { LOGGER_FILES } from '../../constants/logger.js';
+
+const { MAIN_THREAD } = LOGGER_FILES;
 
 const { JWT } = serverConfigs;
 
@@ -13,6 +20,15 @@ export default class AuthService {
     this.publicKey = fs.readFileSync(JWT.PUBLIC_KEY_PATH, { encoding: 'utf-8' });
   }
 
+  /**
+   * Register a new user account
+   * @param {Object} userData - Registration data
+   * @param {string} userData.email - User email (must be unique)
+   * @param {string} userData.password - User password (will be hashed)
+   * @param {string} userData.name - User full name
+   * @returns {Promise<Object>} Registered user object
+   * @throws {ConflictError} If email already exists
+   */
   async registerUser({ email, password, name }) {
     try {
       const existingUser = await this.userModel.findByEmail(email);
@@ -25,6 +41,7 @@ export default class AuthService {
     } catch (err) {
       this.logger.error(
         {
+          file: MAIN_THREAD,
           service: 'AuthService',
           method: 'registerUser',
           email,
@@ -36,6 +53,14 @@ export default class AuthService {
     }
   }
 
+  /**
+   * Authenticate user and generate JWT tokens
+   * @param {Object} credentials - Login credentials
+   * @param {string} credentials.email - User email
+   * @param {string} credentials.password - User password
+   * @returns {Promise<Object>} User object with accessToken and refreshToken
+   * @throws {UnauthorizedError} If credentials invalid
+   */
   async loginUser({ email, password }) {
     try {
       const user = await this.userModel.findByEmailWithPassword(email);
@@ -43,7 +68,7 @@ export default class AuthService {
         throw new UnauthorizedError('Invalid email or password');
       }
 
-      const isPasswordValid = await this.userModel.comparePassword(password, user.password);
+      const isPasswordValid = await user.comparePassword(password, user.password);
       if (!isPasswordValid) {
         throw new UnauthorizedError('Invalid email or password');
       }
@@ -66,6 +91,7 @@ export default class AuthService {
     } catch (err) {
       this.logger.error(
         {
+          file: MAIN_THREAD,
           service: 'AuthService',
           method: 'loginUser',
           email,
@@ -77,6 +103,12 @@ export default class AuthService {
     }
   }
 
+  /**
+   * Verify and decode JWT token
+   * @param {string} token - JWT token to verify
+   * @returns {Object} Decoded token payload (userId, email)
+   * @throws {UnauthorizedError} If token invalid or expired
+   */
   verifyToken(token) {
     try {
       const decoded = jwt.verify(token, this.publicKey, {
@@ -86,6 +118,7 @@ export default class AuthService {
     } catch (err) {
       this.logger.warn(
         {
+          file: MAIN_THREAD,
           service: 'AuthService',
           method: 'verifyToken',
           error: err.message,
@@ -96,6 +129,12 @@ export default class AuthService {
     }
   }
 
+  /**
+   * Generate new access token using refresh token
+   * @param {string} refreshToken - Valid refresh token
+   * @returns {Promise<Object>} New accessToken and refreshToken
+   * @throws {UnauthorizedError} If refresh token invalid or user not found
+   */
   async refreshTokens(refreshToken) {
     try {
       const decoded = this.verifyToken(refreshToken);
@@ -117,6 +156,7 @@ export default class AuthService {
     } catch (err) {
       this.logger.error(
         {
+          file: MAIN_THREAD,
           service: 'AuthService',
           method: 'refreshTokens',
           error: err.message,

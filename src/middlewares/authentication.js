@@ -8,7 +8,7 @@ import { Strategy as LinkedInStrategy } from 'passport-linkedin-oauth2';
 
 import { Strategy as JwtStrategy } from 'passport-jwt';
 
-import { serverConfigs } from '../configs/serverConfigs';
+import { serverConfigs } from '../configs/serverConfigs.js';
 
 const { GOOGLE, LINKEDIN, JWT } = serverConfigs;
 
@@ -67,7 +67,7 @@ export const authenticateWithLinkedIn = passport.authenticate('linkedIn', {
 
 const PUBLIC_KEY = fs.readFileSync(JWT.PUBLIC_KEY_PATH, { encoding: 'utf-8' });
 
-const extractJwtFromRequest = (req) => {
+const extractJwtFromRequest = req => {
   if (req.headers && req.headers.authorization) {
     const authParams = req.headers.authorization.split(' ');
     if (authParams[0] === 'Bearer') {

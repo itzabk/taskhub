@@ -1,8 +1,8 @@
 import path from 'node:path';
 
-import { db } from './mongoDb';
+import { db } from './mongoDb.js';
 
-import { defaultRedisClient } from './redis';
+import { defaultRedisClient } from './redis.js';
 
 import { asClass, asValue, createContainer, InjectionMode, Lifetime } from 'awilix';
 
@@ -27,6 +27,7 @@ const awilixOpts = {
     lifetime: Lifetime.SINGLETON,
     register: asClass,
   },
+  esModules: true,
 };
 
 async function initAwilixContainer() {
@@ -52,7 +53,7 @@ async function initAwilixContainer() {
       redisPublisher: asValue(redisPublisher),
     });
 
-    await container.loadModules(['../services/*/index.js', '../models/*/index.js'], awilixOpts);
+    await container.loadModules(['src/services/*/index.js', 'src/models/*/index.js'], awilixOpts);
 
     logger.info(
       {

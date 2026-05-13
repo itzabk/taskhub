@@ -1,4 +1,3 @@
-import { serverConfigs } from '../../../configs/serverConfigs.js';
 import { BadRequestError, UnauthorizedError } from '../../../helpers/errors/AppError.js';
 
 export default class AuthController {
@@ -6,6 +5,18 @@ export default class AuthController {
     this.authService = authService;
   }
 
+  /**
+   * Register a new user account
+   * @param {Object} req - Express request object
+   * @param {Object} req.body - Request body
+   * @param {string} req.body.name - User full name
+   * @param {string} req.body.email - User email
+   * @param {string} req.body.password - User password
+   * @param {string} req.body.confirmPassword - Password confirmation
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   * @returns {void} Sends 201 on success or error via next()
+   */
   async register(req, res, next) {
     try {
       const { name, email, password, confirmPassword } = req.body;
@@ -35,6 +46,16 @@ export default class AuthController {
     }
   }
 
+  /**
+   * Authenticate user and issue JWT tokens
+   * @param {Object} req - Express request object
+   * @param {Object} req.body - Request body
+   * @param {string} req.body.email - User email
+   * @param {string} req.body.password - User password
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   * @returns {void} Sends 200 with tokens and user data on success or error via next()
+   */
   async login(req, res, next) {
     try {
       const { email, password } = req.body;
@@ -76,6 +97,16 @@ export default class AuthController {
     }
   }
 
+  /**
+   * Refresh expired access token using valid refresh token
+   * @param {Object} req - Express request object
+   * @param {Object} req.body - Request body (alternative to cookie)
+   * @param {string} req.body.refreshToken - Refresh token (optional, can come from cookie)
+   * @param {Object} req.signedCookies - Signed cookies from request
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   * @returns {void} Sends 200 with new tokens on success or error via next()
+   */
   async refresh(req, res, next) {
     try {
       const refreshToken = req.signedCookies['refresh-token'] || req.body.refreshToken;
@@ -107,6 +138,13 @@ export default class AuthController {
     }
   }
 
+  /**
+   * Log out user by clearing authentication cookies
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   * @returns {void} Sends 200 logout confirmation or error via next()
+   */
   async logout(req, res, next) {
     try {
       res.clearCookie('access-token');

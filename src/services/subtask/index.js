@@ -1,11 +1,22 @@
 import { NotFoundError } from '../../helpers/errors/AppError.js';
 
+import { LOGGER_FILES } from '../../constants/logger.js';
+
+const { MAIN_THREAD } = LOGGER_FILES;
+
 export default class SubTaskService {
   constructor({ subTaskModel, logger }) {
     this.subTaskModel = subTaskModel;
     this.logger = logger;
   }
 
+  /**
+   * Create a new subtask under a task
+   * @param {Object} subTaskData - SubTask creation data
+   * @param {string} subTaskData.title - SubTask title
+   * @param {string} subTaskData.taskId - Parent task ID
+   * @returns {Promise<Object>} Created subtask object
+   */
   async createSubTask({ title, taskId }) {
     try {
       const subTask = await this.subTaskModel.create({
@@ -17,6 +28,7 @@ export default class SubTaskService {
     } catch (err) {
       this.logger.error(
         {
+          file: MAIN_THREAD,
           service: 'SubTaskService',
           method: 'createSubTask',
           taskId,
@@ -28,6 +40,12 @@ export default class SubTaskService {
     }
   }
 
+  /**
+   * Get a specific subtask by ID
+   * @param {string} subTaskId - SubTask ID
+   * @returns {Promise<Object>} SubTask object
+   * @throws {NotFoundError} If subtask not found
+   */
   async getSubTaskById(subTaskId) {
     try {
       const subTask = await this.subTaskModel.findById(subTaskId);
@@ -38,6 +56,7 @@ export default class SubTaskService {
     } catch (err) {
       this.logger.error(
         {
+          file: MAIN_THREAD,
           service: 'SubTaskService',
           method: 'getSubTaskById',
           subTaskId,
@@ -49,6 +68,13 @@ export default class SubTaskService {
     }
   }
 
+  /**
+   * Update specific subtask fields (title, completed status)
+   * @param {string} subTaskId - SubTask ID
+   * @param {Object} updates - Fields to update
+   * @returns {Promise<Object>} Updated subtask object
+   * @throws {NotFoundError} If subtask not found
+   */
   async updateSubTask(subTaskId, updates) {
     try {
       const allowedUpdates = ['title', 'completed'];
@@ -68,6 +94,7 @@ export default class SubTaskService {
     } catch (err) {
       this.logger.error(
         {
+          file: MAIN_THREAD,
           service: 'SubTaskService',
           method: 'updateSubTask',
           subTaskId,
@@ -79,6 +106,12 @@ export default class SubTaskService {
     }
   }
 
+  /**
+   * Soft delete a subtask
+   * @param {string} subTaskId - SubTask ID
+   * @returns {Promise<Object>} Success confirmation
+   * @throws {NotFoundError} If subtask not found
+   */
   async deleteSubTask(subTaskId) {
     try {
       const subTask = await this.subTaskModel.softDelete(subTaskId);
@@ -90,6 +123,7 @@ export default class SubTaskService {
     } catch (err) {
       this.logger.error(
         {
+          file: MAIN_THREAD,
           service: 'SubTaskService',
           method: 'deleteSubTask',
           subTaskId,
@@ -101,6 +135,13 @@ export default class SubTaskService {
     }
   }
 
+  /**
+   * List all subtasks for a specific task with pagination
+   * @param {string} taskId - Parent task ID
+   * @param {number} skip - Number of records to skip
+   * @param {number} limit - Number of records to return
+   * @returns {Promise<Object>} Paginated subtask list
+   */
   async listTaskSubTasks(taskId, skip = 0, limit = 10) {
     try {
       const { subTasks, total } = await this.subTaskModel.findByTaskId(taskId, skip, limit);
@@ -114,6 +155,7 @@ export default class SubTaskService {
     } catch (err) {
       this.logger.error(
         {
+          file: MAIN_THREAD,
           service: 'SubTaskService',
           method: 'listTaskSubTasks',
           taskId,

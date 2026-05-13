@@ -86,7 +86,7 @@ export default class TaskController {
       res.status(200).json({
         success: true,
         message: 'Tasks retrieved successfully',
-        data: result,
+        result,
       });
     } catch (err) {
       next(err);
@@ -105,7 +105,7 @@ export default class TaskController {
       res.status(200).json({
         success: true,
         message: 'All tasks retrieved successfully',
-        data: result,
+        result,
       });
     } catch (err) {
       next(err);

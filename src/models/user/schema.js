@@ -1,6 +1,8 @@
+import bcrypt from 'bcrypt';
+
 import { Schema } from 'mongoose';
 
-export const userSchema = new Schema({
+const userSchema = new Schema({
   name: {
     type: String,
     required: true,
@@ -24,12 +26,6 @@ export const userSchema = new Schema({
   details: {
     type: Schema.Types.Mixed,
     default: {},
-  },
-  role: {
-    type: Schema.Types.ObjectId,
-    ref: 'Role',
-    required: true,
-    index: true,
   },
   isDeleted: {
     type: Boolean,
@@ -77,4 +73,18 @@ export const userSchema = new Schema({
   },
 });
 
-userSchema.index({ email: 1 }, { unique: true, partialFilterExpression: { isDeleted: false } });
+userSchema.pre('save', async function () {
+  if (!this.isModified('password')) {
+    return;
+  }
+
+  this.password = await bcrypt.hash(this.password, 10);
+});
+
+userSchema.methods.comparePassword = async function (plainPassword) {
+  return bcrypt.compare(plainPassword, this.password);
+};
+
+export default function (mongooseConnection) {
+  return mongooseConnection.model('User', userSchema);
+}

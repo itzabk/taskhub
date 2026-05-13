@@ -1,6 +1,6 @@
 import { Schema } from 'mongoose';
 
-export const taskSchema = new Schema(
+const taskSchema = new Schema(
   {
     title: {
       type: String,
@@ -39,3 +39,7 @@ export const taskSchema = new Schema(
   },
   { timestamps: true }
 );
+
+export default function (mongooseConnection) {
+  return mongooseConnection.model('Task', taskSchema);
+}

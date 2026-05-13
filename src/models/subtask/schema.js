@@ -24,6 +24,6 @@ const subTaskSchema = new Schema({
   },
 });
 
-export default function subTask(mongooseConnection) {
+export default function (mongooseConnection) {
   return mongooseConnection.model('SubTask', subTaskSchema);
 }
