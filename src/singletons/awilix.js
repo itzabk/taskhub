@@ -18,12 +18,10 @@ const awilixOpts = {
   formatName: (name, descriptor) => {
     const cleanPath = path.normalize(descriptor.path);
     const splat = cleanPath.split(path.sep);
-    const fileName = splat[splat.length - 1];
     const parentName = splat[splat.length - 2];
     const rootName = splat[splat.length - 3];
-    const awilixInjectorName =
-      parentName + rootName.charAt(0) + rootName.slice(1, splat.length - 1);
-    return awilixInjectorName;
+    const suffix = rootName === 'services' ? 'Service' : rootName === 'models' ? 'Model' : '';
+    return parentName + suffix;
   },
   resolverOptions: {
     lifetime: Lifetime.SINGLETON,

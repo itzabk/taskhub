@@ -67,16 +67,36 @@ export const authenticateWithLinkedIn = passport.authenticate('linkedIn', {
 
 const PUBLIC_KEY = fs.readFileSync(JWT.PUBLIC_KEY_PATH, { encoding: 'utf-8' });
 
-const jwtStategy = new JwtStrategy(
+const extractJwtFromRequest = (req) => {
+  if (req.headers && req.headers.authorization) {
+    const authParams = req.headers.authorization.split(' ');
+    if (authParams[0] === 'Bearer') {
+      return authParams[1];
+    }
+  }
+  if (req.signedCookies && req.signedCookies['access-token']) {
+    return req.signedCookies['access-token'];
+  }
+  return null;
+};
+
+const jwtStrategy = new JwtStrategy(
   {
-    jwtFromRequest: '',
+    jwtFromRequest: extractJwtFromRequest,
     secretOrKey: PUBLIC_KEY,
     algorithms: [JWT.ALGORITHM],
     passReqToCallback: true,
   },
-  async function verify(req, payload, done) {}
+  async function verify(req, payload, done) {
+    try {
+      req.user = payload;
+      return done(null, payload);
+    } catch (err) {
+      return done(err, false);
+    }
+  }
 );
 
-passport.use('jwt', jwtStategy);
+passport.use('jwt', jwtStrategy);
 
 export const authenticateWithJwt = passport.authenticate('jwt', { session: false });
