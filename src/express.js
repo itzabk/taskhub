@@ -26,6 +26,10 @@ import passport from 'passport';
 
 import cookieParser from 'cookie-parser';
 
+import swaggerUi from 'swagger-ui-express';
+
+import { swaggerSpec } from './configs/swagger-api-docs.js';
+
 const {
   NODE_PORT = 3000,
   CLIENT_URL,
@@ -162,6 +166,27 @@ function createExpressApp() {
       uptime: process.uptime(),
     });
   });
+
+  app.use(
+    '/api-docs',
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerSpec, {
+      customCss: `
+      .swagger-ui {
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+    `,
+      customSiteTitle: 'TaskHub API Documentation',
+      swaggerOptions: {
+        defaultModelsExpandDepth: 2,
+        docExpansion: 'list',
+        filter: true,
+        showRequestHeaders: true,
+        withCredentials: true,
+      },
+    })
+  );
 
   router(app);
 
